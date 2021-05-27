@@ -1,11 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThreeJS Starter</title>
+
+	<title>
+		Three.js Multiplayer Client
+	</title>
+
+	<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+	<!--Scoket.io-->
+	<script src="../public/css/socket.io.js"></script>
+
+	<!--Client Side CSS-->
+	<link rel="stylesheet" href="../public/css/client.css" />
+
 </head>
 <body>
-    <canvas class="webgl"></canvas>
+
+<!-- WebGL context -->
+<div id="gl_context"></div>
+
+<!-- Client side JS bundle -->
+<script src="../public/js/bundle.js"></script>
+
 </body>
 </html>
