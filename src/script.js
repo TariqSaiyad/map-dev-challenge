@@ -1,318 +1,3 @@
-// import "./style.css";
-// import * as THREE from "three";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-// import * as dat from "dat.gui";
-// import { Sky } from "three/examples/jsm/objects/Sky.js";
-// import { Water } from "three/examples/jsm/objects/Water.js";
-
-// let sky, camera, renderer, sun, water;
-// // Debug
-// const gui = new dat.GUI();
-
-// // Canvas
-// const canvas = document.querySelector("canvas.webgl");
-
-// // Scene
-// const scene = new THREE.Scene();
-
-// // Objects
-// // const geometry = new THREE.TorusGeometry(0.7, 0.2, 16, 100);
-// // Materials
-// // const material = new THREE.MeshBasicMaterial();
-// // material.color = new THREE.Color(0xff0000);
-// // Mesh
-// // const sphere = new THREE.Mesh(geometry, material);
-// // scene.add(sphere);
-// // Lights
-// // const pointLight = new THREE.PointLight(0xffffff, 0.1)
-// // pointLight.position.x = 2
-// // pointLight.position.y = 3
-// // pointLight.position.z = 4
-// // scene.add(pointLight)
-
-// function initSky() {
-//   // Add Sky
-//   sky = new Sky();
-//   sky.scale.setScalar(10000);
-//   scene.add(sky);
-
-//   sun = new THREE.Vector3();
-
-//   // Water
-
-//   const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
-
-//   water = new Water(waterGeometry, {
-//     textureWidth: 512,
-//     textureHeight: 512,
-//     waterNormals: new THREE.TextureLoader().load(
-//       "/assets/images/waternormals.jpg",
-//       function (texture) {
-//         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-//       }
-//     ),
-//     sunDirection: new THREE.Vector3(),
-//     sunColor: 0xffffff,
-//     waterColor: 0x001e0f,
-//     distortionScale: 3.7,
-//     fog: scene.fog !== undefined,
-//   });
-
-//   water.rotation.x = -Math.PI / 2;
-
-//   scene.add(water);
-
-//   /// GUI
-
-//   const effectController = {
-//     turbidity: 10,
-//     rayleigh: 3,
-//     mieCoefficient: 0.005,
-//     mieDirectionalG: 0.7,
-//     elevation: 2,
-//     azimuth: 180,
-//     exposure: 0.5,
-//   };
-
-//   function guiChanged() {
-//     const uniforms = sky.material.uniforms;
-//     uniforms["turbidity"].value = effectController.turbidity;
-//     uniforms["rayleigh"].value = effectController.rayleigh;
-//     uniforms["mieCoefficient"].value = effectController.mieCoefficient;
-//     uniforms["mieDirectionalG"].value = effectController.mieDirectionalG;
-
-//     const phi = THREE.MathUtils.degToRad(90 - effectController.elevation);
-//     const theta = THREE.MathUtils.degToRad(effectController.azimuth);
-
-//     sun.setFromSphericalCoords(1, phi, theta);
-
-//     uniforms["sunPosition"].value.copy(sun);
-
-//     renderer.render(scene, camera);
-//   }
-
-//   gui.add(effectController, "turbidity", 0.0, 20.0, 0.1).onChange(guiChanged);
-//   gui.add(effectController, "rayleigh", 0.0, 4, 0.001).onChange(guiChanged);
-//   gui
-//     .add(effectController, "mieCoefficient", 0.0, 0.1, 0.001)
-//     .onChange(guiChanged);
-//   gui
-//     .add(effectController, "mieDirectionalG", 0.0, 1, 0.001)
-//     .onChange(guiChanged);
-//   gui.add(effectController, "elevation", 0, 90, 0.1).onChange(guiChanged);
-//   gui.add(effectController, "azimuth", -180, 180, 0.1).onChange(guiChanged);
-//   guiChanged();
-
-//   const parameters = {
-//     elevation: 2,
-//     azimuth: 180
-// };
-
-//   const pmremGenerator = new THREE.PMREMGenerator( renderer );
-
-//   function updateSun() {
-
-//       const phi = THREE.MathUtils.degToRad( 90 - parameters.elevation );
-//       const theta = THREE.MathUtils.degToRad( parameters.azimuth );
-
-//       sun.setFromSphericalCoords( 1, phi, theta );
-
-//       sky.material.uniforms[ 'sunPosition' ].value.copy( sun );
-//       water.material.uniforms[ 'sunDirection' ].value.copy( sun ).normalize();
-
-//       scene.environment = pmremGenerator.fromScene( sky ).texture;
-
-//   }
-
-//   updateSun();
-
-// }
-
-// // LIGHT
-// var light = new THREE.PointLight(0xffffff);
-// light.position.set(100, 250, 100);
-// scene.add(light);
-// // FLOOR
-// var floorTexture = new THREE.TextureLoader().load(
-//   "/assets/images/checkerboard.jpg"
-// );
-// floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-// floorTexture.repeat.set(10, 10);
-// var floorMaterial = new THREE.MeshBasicMaterial({
-//   map: floorTexture,
-//   side: THREE.DoubleSide,
-// });
-// var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
-// var floor = new THREE.Mesh(floorGeometry, floorMaterial);
-// floor.position.y = -0.5;
-// floor.rotation.x = Math.PI / 2;
-// // scene.add(floor);
-// // SKYBOX
-// var skyBoxGeometry = new THREE.BoxGeometry(10000, 10000, 10000);
-// var skyBoxMaterial = new THREE.MeshBasicMaterial({
-//   color: 0x9999ff,
-//   side: THREE.BackSide,
-// });
-// var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
-// // scene.add(skyBox);
-
-// // texture used to generate "bumpiness"
-// var bumpTexture = new THREE.TextureLoader().load(
-//   "/assets/images/nz-height-map.jpg"
-// );
-// bumpTexture.wrapS = bumpTexture.wrapT = THREE.RepeatWrapping;
-// // magnitude of normal displacement
-// var bumpScale = 100.0;
-
-// var oceanTexture = new THREE.TextureLoader().load(
-//   "/assets/images/dirt-512.jpg"
-// );
-// oceanTexture.wrapS = oceanTexture.wrapT = THREE.RepeatWrapping;
-
-// var sandyTexture = new THREE.TextureLoader().load(
-//   "/assets/images/sand-512.jpg"
-// );
-// sandyTexture.wrapS = sandyTexture.wrapT = THREE.RepeatWrapping;
-
-// var grassTexture = new THREE.TextureLoader().load(
-//   "/assets/images/grass-512.jpg"
-// );
-// grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
-
-// var rockyTexture = new THREE.TextureLoader().load(
-//   "/assets/images/rock-512.jpg"
-// );
-// rockyTexture.wrapS = rockyTexture.wrapT = THREE.RepeatWrapping;
-
-// var snowyTexture = new THREE.TextureLoader().load(
-//   "/assets/images/snow-512.jpg"
-// );
-// snowyTexture.wrapS = snowyTexture.wrapT = THREE.RepeatWrapping;
-
-// // use "this." to create global object
-// let customUniforms = {
-//   bumpTexture: { type: "t", value: bumpTexture },
-//   bumpScale: { type: "f", value: bumpScale },
-//   oceanTexture: { type: "t", value: oceanTexture },
-//   sandyTexture: { type: "t", value: sandyTexture },
-//   grassTexture: { type: "t", value: grassTexture },
-//   rockyTexture: { type: "t", value: rockyTexture },
-//   snowyTexture: { type: "t", value: snowyTexture },
-// };
-
-// // create custom material from the shader code above
-// //   that is within specially labelled script tags
-// var customMaterial = new THREE.ShaderMaterial({
-//   uniforms: customUniforms,
-//   vertexShader: document.getElementById("vertexShader").textContent,
-//   fragmentShader: document.getElementById("fragmentShader").textContent,
-//   //   may need to remove
-//   side: THREE.DoubleSide,
-// });
-
-// var planeGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
-// var plane = new THREE.Mesh(planeGeo, customMaterial);
-// plane.rotation.x = -Math.PI / 2;
-// // plane.position.y = -100;
-// // scene.add(plane);
-
-// // var waterGeo = new THREE.PlaneGeometry(1000, 1000, 1, 1);
-// // var waterTex = new THREE.TextureLoader().load("/assets/images/water512.jpg");
-// // waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
-// // waterTex.repeat.set(5, 5);
-// // var waterMat = new THREE.MeshBasicMaterial({
-// //   map: waterTex,
-// //   transparent: true,
-// //   opacity: 0.4,
-// // });
-// // var water = new THREE.Mesh(planeGeo, waterMat);
-// // water.rotation.x = -Math.PI / 2;
-// // water.position.y = 5;
-// // scene.add(water);
-
-// /**
-//  * Sizes
-//  */
-// const sizes = {
-//   width: window.innerWidth,
-//   height: window.innerHeight,
-// };
-
-// window.addEventListener("resize", () => {
-//   // Update sizes
-//   sizes.width = window.innerWidth;
-//   sizes.height = window.innerHeight;
-
-//   // Update camera
-//   camera.aspect = sizes.width / sizes.height;
-//   camera.updateProjectionMatrix();
-
-//   // Update renderer
-//   renderer.setSize(sizes.width, sizes.height);
-//   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-// });
-
-// /**
-//  * Camera
-//  */
-// // Base camera
-// var SCREEN_WIDTH = window.innerWidth,
-//   SCREEN_HEIGHT = window.innerHeight;
-// var VIEW_ANGLE = 45,
-//   ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT,
-//   NEAR = 0.1,
-//   FAR = 20000;
-
-// camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
-// camera.position.set(0, 1000, 400);
-// camera.lookAt(scene.position);
-// scene.add(camera);
-
-// // Controls
-// const controls = new OrbitControls(camera, canvas);
-// controls.enableDamping = true;
-
-// /**
-//  * Renderer
-//  */
-// renderer = new THREE.WebGLRenderer({
-//   canvas: canvas,
-// });
-// renderer.setSize(sizes.width, sizes.height);
-// renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-// renderer.toneMapping = THREE.ACESFilmicToneMapping;
-// renderer.toneMappingExposure = 0.5;
-
-// const helper = new THREE.GridHelper(10000, 2, 0xffffff, 0xffffff);
-// // scene.add(helper);
-
-// initSky();
-
-// /**
-//  * Animate
-//  */
-
-// const clock = new THREE.Clock();
-
-// const tick = () => {
-//   const elapsedTime = clock.getElapsedTime();
-
-//   // Update objects
-//   //   sphere.rotation.y = 0.5 * elapsedTime;
-
-//   // Update Orbital Controls
-//   controls.update();
-//   water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
-
-//   // Render
-//   renderer.render(scene, camera);
-
-//   // Call tick again on the next frame
-//   window.requestAnimationFrame(tick);
-// };
-
-// tick();
-
 import "./style.css";
 // import * as THREE from "three";
 
@@ -322,24 +7,112 @@ import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 const canvas = document.querySelector("div.container");
-import { Terrain, EaseInWeak, DiamondSquare,Linear, generateBlendedMaterial, scatterMeshes } from "three.terrain.js";
-// import { Terrain, EaseInWeak,DiamondSquare } from "three.terrain.js";
+import {
+  Terrain,
+  EaseInWeak,
+  DiamondSquare,
+  Linear,
+  generateBlendedMaterial,
+  scatterMeshes,
+} from "three.terrain.js";
+
 let stats;
 let camera, scene, renderer;
 let controls, water, sun, mesh;
 
-init();
-animate();
+var can = document.createElement("canvas");
+var ctx = can.getContext("2d");
+
+const image = new Image(500, 500); // Using optional size for image
+image.onload = drawImageActualSize; // Draw when image has loaded
+
+image.src = "/assets/images/square-nz.png";
+
+let data;
+let isLoaded = false;
+
+let clouds = [];
+// Load an image of intrinsic size 300x227 in CSS pixels
+
+function drawImageActualSize() {
+  can.width = this.naturalWidth;
+  can.height = this.naturalHeight;
+
+  ctx.drawImage(this, 0, 0, this.width, this.height);
+  // canvas.appendChild(can)
+  data = ctx.getImageData(0, 0, image.width, image.height);
+  isLoaded = true;
+  console.log("LOADED");
+  init();
+  animate();
+}
+
+function map(val, smin, smax, emin, emax) {
+  const t = (val - smin) / (smax - smin);
+  return (emax - emin) * t + emin;
+}
+const chopBottom = (geo, bottom) =>
+  geo.vertices.forEach((v) => (v.y = Math.max(v.y, bottom)));
+//randomly displace the x,y,z coords by the `per` value
+const jitter = (geo, per) =>
+  geo.vertices.forEach((v) => {
+    v.x += map(Math.random(), 0, 1, -per, per);
+    v.y += map(Math.random(), 0, 1, -per, per);
+    v.z += map(Math.random(), 0, 1, -per, per);
+  });
+
+function makeCloud(scene, x, y, z) {
+  const cloudGeo = new THREE.Geometry();
+  let r = Math.random() * 5 + 5;
+  const tuft1 = new THREE.SphereGeometry(1.5, r, 8);
+  tuft1.translate(x - 2, y, z);
+  cloudGeo.merge(tuft1);
+
+  const tuft2 = new THREE.SphereGeometry(1.5, 7, r);
+  tuft2.translate(x + 2, y, z);
+  cloudGeo.merge(tuft2);
+
+  const tuft3 = new THREE.SphereGeometry(2.0, r, 8);
+  tuft3.translate(x, y, z);
+  cloudGeo.merge(tuft3);
+
+  cloudGeo.computeFlatVertexNormals();
+  let cloud = new THREE.Mesh(
+    cloudGeo,
+    new THREE.MeshLambertMaterial({
+      color: "white",
+      flatShading: true,
+    })
+  );
+
+  const cloudLight = new THREE.DirectionalLight(0xffffff, 0.1);
+  cloudLight.position.set(x + 1, y + 1, z).normalize();
+  // scene.add(cloudLight);
+  // scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+
+  const cloudLight2 = new THREE.DirectionalLight(0xff5566, 0.2);
+  cloudLight2.position.set(x - 3, y - 1, z).normalize();
+  // scene.add(cloudLight2);
+
+  jitter(cloudGeo, 0.3);
+  chopBottom(cloudGeo, y + 0.5);
+  cloud.castShadow = true;
+  scene.add(cloud);
+  clouds.push(cloud);
+  cloud.rotation.y = (Math.random() * Math.PI) / 2;
+}
 
 function init() {
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
   // renderer.toneMapping = THREE.LinearToneMapping;
   canvas.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-
+  // scene.background = new THREE.Color().setHSL( 0.6, 0, 1 );
+  // scene.fog = new THREE.Fog( scene.background, 50, 500 );
   /**
    * Camera
    */
@@ -349,10 +122,10 @@ function init() {
   var VIEW_ANGLE = 45,
     ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT,
     NEAR = 0.1,
-    FAR = 20000;
+    FAR = 10000;
 
   camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
-  camera.position.set(0, 1000, 400);
+  camera.position.set(0, 500, 0);
   camera.lookAt(scene.position);
   scene.add(camera);
 
@@ -360,230 +133,161 @@ function init() {
   controls = new OrbitControls(camera, canvas);
   // controls.maxPolarAngle = Math.PI * 0.495;
   controls.minDistance = 40.0;
-				// controls.maxDistance = 2000.0;
+  // controls.maxDistance = 2000.0;
   controls.enableDamping = true;
   //
 
-  sun = new THREE.Vector3();
+  // LIGHTS
 
-  // Water
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
+  hemiLight.color.setHSL(0.6, 1, 0.6);
+  hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+  hemiLight.position.set(0, 50, 0);
+  scene.add(hemiLight);
 
-  const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
-
-  water = new Water(waterGeometry, {
-    textureWidth: 512,
-    textureHeight: 512,
-    waterNormals: new THREE.TextureLoader().load(
-      "/assets/images/waternormals.jpg",
-      function (texture) {
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      }
-    ),
-    sunDirection: new THREE.Vector3(),
-    sunColor: 0xffffff,
-    waterColor: 0x001e0f,
-    distortionScale: 3.7,
-    fog: scene.fog !== undefined,
-  });
-
-  water.rotation.x = -Math.PI / 2;
-
-  scene.add(water);
-
-  var aMeshMirror = new THREE.Mesh(
-    new THREE.PlaneBufferGeometry(10000, 10000, 10, 10),
-    water.material
-  );
-  // aMeshMirror.add(water);
-  aMeshMirror.rotation.x = -Math.PI * 0.5;
-  // scene.add(aMeshMirror);
-
-  // Skybox
-
-  const sky = new Sky();
-  sky.scale.setScalar(10000);
-  scene.add(sky);
-
-  const skyUniforms = sky.material.uniforms;
-  skyUniforms["turbidity"].value = 10;
-  skyUniforms["rayleigh"].value = 2;
-
-  const parameters = {
-    turbidity: 10,
-    rayleigh: 3,
-    mieCoefficient: 0.005,
-    mieDirectionalG: 0.7,
-    elevation: 2,
-    azimuth: 180,
-  };
-
-
-  const pmremGenerator = new THREE.PMREMGenerator(renderer);
-
-  function updateSun() {
-    const phi = THREE.MathUtils.degToRad(90 - parameters.elevation);
-    const theta = THREE.MathUtils.degToRad(parameters.azimuth);
-
-    sun.setFromSphericalCoords(1, phi, theta);
-
-    sky.material.uniforms["sunPosition"].value.copy(sun);
-    water.material.uniforms["sunDirection"].value.copy(sun).normalize();
-
-    scene.environment = pmremGenerator.fromScene(sky).texture;
-  }
-
-  updateSun();
+  const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
+  scene.add(hemiLightHelper);
 
   //
 
-  const geometry = new THREE.BoxGeometry(30, 30, 30);
-  const material = new THREE.MeshStandardMaterial({ roughness: 0 });
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  dirLight.color.setHSL(0.1, 1, 0.95);
+  dirLight.position.set(-1, 1.75, 1);
+  dirLight.position.multiplyScalar(30);
+  scene.add(dirLight);
 
-  mesh = new THREE.Mesh(geometry, material);
-  // scene.add(mesh);
+  dirLight.castShadow = true;
 
-  // texture used to generate "bumpiness"
-  var bumpTexture = new THREE.TextureLoader().load(
-    "/assets/images/nz-height-map.jpg"
-  );
-  bumpTexture.wrapS = bumpTexture.wrapT = THREE.RepeatWrapping;
-  // magnitude of normal displacement
-  var bumpScale = 100.0;
+  dirLight.shadow.mapSize.width = 2048;
+  dirLight.shadow.mapSize.height = 2048;
 
-  var oceanTexture = new THREE.TextureLoader().load(
-    "/assets/images/dirt-512.jpg"
-  );
-  oceanTexture.wrapS = oceanTexture.wrapT = THREE.RepeatWrapping;
+  const d = 50;
 
-  var sandyTexture = new THREE.TextureLoader().load(
-    "/assets/images/sand-512.jpg"
-  );
-  sandyTexture.wrapS = sandyTexture.wrapT = THREE.RepeatWrapping;
+  dirLight.shadow.camera.left = -d;
+  dirLight.shadow.camera.right = d;
+  dirLight.shadow.camera.top = d;
+  dirLight.shadow.camera.bottom = -d;
 
-  var grassTexture = new THREE.TextureLoader().load(
-    "/assets/images/grass-512.jpg"
-  );
-  grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+  dirLight.shadow.camera.far = 3500;
+  dirLight.shadow.bias = -0.0001;
 
-  var rockyTexture = new THREE.TextureLoader().load(
-    "/assets/images/rock-512.jpg"
-  );
-  rockyTexture.wrapS = rockyTexture.wrapT = THREE.RepeatWrapping;
+  const dirLightHelper = new THREE.DirectionalLightHelper(dirLight, 10);
+  scene.add(dirLightHelper);
 
-  var snowyTexture = new THREE.TextureLoader().load(
-    "/assets/images/snow-512.jpg"
-  );
-  snowyTexture.wrapS = snowyTexture.wrapT = THREE.RepeatWrapping;
+  // GROUND
 
-  // use "this." to create global object
-  let customUniforms = {
-    bumpTexture: { type: "t", value: bumpTexture },
-    bumpScale: { type: "f", value: bumpScale },
-    oceanTexture: { type: "t", value: oceanTexture },
-    sandyTexture: { type: "t", value: sandyTexture },
-    grassTexture: { type: "t", value: grassTexture },
-    rockyTexture: { type: "t", value: rockyTexture },
-    snowyTexture: { type: "t", value: snowyTexture },
+  const groundGeo = new THREE.PlaneGeometry(10000, 10000);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  groundMat.color.setHSL(0.095, 1, 0.75);
+
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.position.y = -33;
+  ground.rotation.x = -Math.PI / 2;
+  // ground.receiveShadow = true;
+  // scene.add(ground);
+
+  // SKYDOME
+
+  const vertexShader = document.getElementById("vertexShader").textContent;
+  const fragmentShader = document.getElementById("fragmentShader").textContent;
+  const uniforms = {
+    topColor: { value: new THREE.Color(0x0077ff) },
+    bottomColor: { value: new THREE.Color(0xffffff) },
+    offset: { value: 33 },
+    exponent: { value: 0.6 },
   };
+  uniforms["topColor"].value.copy(hemiLight.color);
 
-  // create custom material from the shader code above
-  //   that is within specially labelled script tags
-  var customMaterial = new THREE.ShaderMaterial({
-    uniforms: customUniforms,
-    vertexShader: document.getElementById("vertexShader").textContent,
-    fragmentShader: document.getElementById("fragmentShader").textContent,
-    //   may need to remove
-    side: THREE.DoubleSide,
+  // scene.fog.color.copy( uniforms[ "bottomColor" ].value );
+
+  const skyGeo = new THREE.SphereGeometry(4000, 32, 15);
+  const skyMat = new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    side: THREE.BackSide,
   });
 
-  var planeGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
-  var plane = new THREE.Mesh(planeGeo, customMaterial);
-  plane.rotation.x = -Math.PI / 2;
-  plane.position.y = -4;
-  // scene.add(plane);
+  const sky = new THREE.Mesh(skyGeo, skyMat);
+  scene.add(sky);
 
-  var h = new Image();   // Create new img element
-  h.src = '/assets/images/square-nz.png'; // Set source path
-const heightMapParams ={
-  maxHeight: 50,
-  minHeight: 0,
-  steps: 0,
-  useBufferGeometry: false,
-  intervals: 700,
-  width: 1000,
-  height: 1000,
-  x:1,
-  y:1,
-  z:1,
-}
-  
-  let terrainScene;
+  let lambert = new THREE.MeshLambertMaterial({
+    // wireframe:true,
+    vertexColors: THREE.VertexColors,
+    //required for flat shading
+    flatShading: true,
+  });
 
-function updateTerrain(){
-  scene.remove(terrainScene);
-  terrainScene = new THREE.Terrain({
-    material: new THREE.MeshStandardMaterial({
-    color: 0x44dd66,
-  }),
-  easing: Linear,
-  heightmap: h,
-  maxHeight: heightMapParams.maxHeight,
-  minHeight: heightMapParams.minHeight,
-  steps: heightMapParams.steps,
-  useBufferGeometry: heightMapParams.useBufferGeometry,
-  xSegments: heightMapParams.intervals,
-  width: heightMapParams.height,
-  
-  ySegments: heightMapParams.intervals,
-  height: heightMapParams.height});
-  terrainScene.rotation.x = -Math.PI / 2;
-  terrainScene.position.y = 100
-  
-// terrainScene.children[0].position.x = heightMapParams.x;
-// terrainScene.children[0].position.y = heightMapParams.y;
-// terrainScene.children[0].position.z = heightMapParams.z;
-// terrainScene.children[0].geometry.translate( heightMapParams.x, heightMapParams.y,heightMapParams.z );
-// let s = new THREE.Matrix4().makeScale(heightMapParams.x, heightMapParams.x,1)
-// terrainScene.children[0].geometry.applyMatrix4(s);
+  if (isLoaded) {
+    console.log("here");
+    const geo = new THREE.PlaneGeometry(
+      data.width,
+      data.height,
+      data.width,
+      data.height + 1
+    );
+    //assign vert data from the canvas
+    for (let j = 0; j < data.height; j++) {
+      for (let i = 0; i < data.width; i++) {
+        const n = j * data.height + i;
+        const nn = j * (data.height + 1) + i;
+        const col = data.data[n * 4]; // the red channel
+        const v1 = geo.vertices[nn];
+        v1.z = map(col, 0, 255, 0, 10); //map from 0:255 to -10:10
+        // if (v1.z > 5) v1.z = 5; //exaggerate the peaks
+        // v1.x += map(Math.random(),0,1,-0.5,0.5) //jitter x
+        // v1.y += map(Math.random(),0,1,-0.5,0.5) //jitter y
+      }
+    }
 
-  scene.add(terrainScene);
+    geo.faces.forEach((f) => {
+      //get three verts for the face
 
-}
+      const a = geo.vertices[f.a];
+      const b = geo.vertices[f.b];
+      const c = geo.vertices[f.c];
 
-  updateTerrain()
+      //if average is below water, set to 0
+      //alt: color transparent to show the underwater landscape
+      const avgz = (a.z + b.z + c.z) / 3;
+      if (avgz < 0) {
+        a.z = 0;
+        b.z = 0;
+        c.z = 0;
+      }
+      //assign colors based on the highest point of the face
+      const max = Math.max(a.z, Math.max(b.z, c.z));
+      if (max <= 0) return f.color.set(0x44ccff);
+      if (max <= 1.5) return f.color.set(0x228800);
+      if (max <= 3.5) return f.color.set(0xeecc44);
+      if (max <= 5) return f.color.set(0xcccccc);
+
+      //otherwise, return white
+      f.color.set("white");
+    });
+    geo.colorsNeedUpdate = true;
+    geo.verticesNeedUpdate = true;
+    //required for flat shading
+    geo.computeFlatVertexNormals();
+    var another = new THREE.Mesh(geo, lambert);
+    another.rotation.x = -Math.PI / 2;
+    // another.position.z = 0;
+    another.receiveShadow = true;
+    scene.add(another);
+    another.geometry.computeBoundingBox();
+    for (let num = 0; num <= 5; num++) {
+      // let x = Math.random() * data.width;
+      // let y = Math.random() * data.height;
+      // let z = Math.random() * 300;
+      let x = data.width * Math.random() - data.width / 2;
+      let y = data.height * Math.random() - data.height / 2;
+      makeCloud(scene, x, Math.random() * 70, y);
+    }
+  }
 
   //STATS
   stats = new Stats();
   canvas.appendChild(stats.dom);
-
-  // GUI
-  const gui = new dat.GUI();
-
-  const folderSky = gui.addFolder("Sky");
-  folderSky.add(parameters, "elevation", 0, 90, 0.1).onChange(updateSun);
-  folderSky.add(parameters, "azimuth", -180, 180, 0.1).onChange(updateSun);
-  // folderSky.open();
-
-  const waterUniforms = water.material.uniforms;
-  const folderWater = gui.addFolder("Water");
-  folderWater
-    .add(waterUniforms.distortionScale, "value", 0, 8, 0.1)
-    .name("distortionScale");
-  folderWater.add(waterUniforms.size, "value", 0.1, 10, 0.1).name("size");
-  // folderWater.open();
-
-
-  const folderMap = gui.addFolder("Height Map");
-  folderMap.add(heightMapParams, "maxHeight", 0, 1000, 1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "minHeight", -300, 0, 1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "steps", 0, 10, 1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "intervals", 10, 2000, 1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "height", 1000, 4000, 1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "x", 0, 2, 0.1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "y", 0, 2, 0.1).onChange(updateTerrain);
-  folderMap.add(heightMapParams, "z", 0, 2, 0.1).onChange(updateTerrain);
-  folderMap.open();
-
 
   window.addEventListener("resize", onWindowResize);
 }
@@ -604,11 +308,13 @@ function animate() {
 function render() {
   const time = performance.now() * 0.001;
 
-  mesh.position.y = Math.sin(time) * 20 + 5;
-  mesh.rotation.x = time * 0.5;
-  mesh.rotation.z = time * 0.51;
+  // mesh.position.y = Math.sin(time) * 20 + 5;
+  // mesh.rotation.x = time * 0.5;
+  // mesh.rotation.z = time * 0.51;
 
-  water.material.uniforms["time"].value += 1.0 / 60.0;
-
+  // clouds.forEach((cloud) => {
+  //   cloud.position.x=Math.sin(time) *THREE.Noise
+  //   cloud.position.z=Math.cos(time) *Math.random()
+  // });
   renderer.render(scene, camera);
 }

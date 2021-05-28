@@ -9,49 +9,38 @@
   <body>
     <script src="../node_modules/three/build/three.min.js"></script>
 
-    <script id="vertexShader" type="x-shader/x-vertex">
-      uniform sampler2D bumpTexture;
-      uniform float bumpScale;
+    <script type="x-shader/x-vertex" id="vertexShader">
 
-      varying float vAmount;
-      varying vec2 vUV;
+			varying vec3 vWorldPosition;
 
-      void main()
-      {
-          vUV = uv;
-          vec4 bumpData = texture2D( bumpTexture, uv );
+			void main() {
 
-          vAmount = bumpData.r; // assuming map is grayscale it doesn't matter if you use r, g, or b.
+				vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+				vWorldPosition = worldPosition.xyz;
 
-          // move the position along the normal
-          vec3 newPosition = position + normal * bumpScale * vAmount;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
-          gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
-      }
-    </script>
+			}
 
-    <!-- fragment shader a.k.a. pixel shader -->
-    <script id="fragmentShader" type="x-shader/x-vertex">
-      uniform sampler2D oceanTexture;
-      uniform sampler2D sandyTexture;
-      uniform sampler2D grassTexture;
-      uniform sampler2D rockyTexture;
-      uniform sampler2D snowyTexture;
+		</script>
 
-      varying vec2 vUV;
+		<script type="x-shader/x-fragment" id="fragmentShader">
 
-      varying float vAmount;
+			uniform vec3 topColor;
+			uniform vec3 bottomColor;
+			uniform float offset;
+			uniform float exponent;
 
-      void main()
-      {
-          vec4 water = (smoothstep(0.01, 0.25, vAmount) - smoothstep(0.24, 0.26, vAmount)) * texture2D( oceanTexture, vUV * 10.0 );
-          vec4 sandy = (smoothstep(0.24, 0.27, vAmount) - smoothstep(0.28, 0.31, vAmount)) * texture2D( sandyTexture, vUV * 10.0 );
-          vec4 grass = (smoothstep(0.28, 0.32, vAmount) - smoothstep(0.35, 0.40, vAmount)) * texture2D( grassTexture, vUV * 20.0 );
-          vec4 rocky = (smoothstep(0.30, 0.50, vAmount) - smoothstep(0.40, 0.70, vAmount)) * texture2D( rockyTexture, vUV * 20.0 );
-          vec4 snowy = (smoothstep(0.50, 0.65, vAmount))                                   * texture2D( snowyTexture, vUV * 10.0 );
-          gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) + water + sandy + grass + rocky + snowy; //, 1.0);
-      }
-    </script>
+			varying vec3 vWorldPosition;
+
+			void main() {
+
+				float h = normalize( vWorldPosition + offset ).y;
+				gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 );
+
+			}
+
+		</script>
     <div class="container"></div>
   </body>
 </html>
