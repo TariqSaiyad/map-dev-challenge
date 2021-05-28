@@ -314,14 +314,16 @@
 // tick();
 
 import "./style.css";
-// import * as THREE from "three/build/three.module";
+// import * as THREE from "three";
+
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "dat.gui";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 const canvas = document.querySelector("div.container");
-
+import { Terrain, EaseInWeak, DiamondSquare,Linear, generateBlendedMaterial, scatterMeshes } from "three.terrain.js";
+// import { Terrain, EaseInWeak,DiamondSquare } from "three.terrain.js";
 let stats;
 let camera, scene, renderer;
 let controls, water, sun, mesh;
@@ -337,23 +339,7 @@ function init() {
   canvas.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  var xS = 63, yS = 63;
-  // let terrainScene = THREE.Terrain({
-  //     easing: THREE.Terrain.Linear,
-  //     frequency: 2.5,
-  //     heightmap: THREE.Terrain.Worley,
-  //     material: new THREE.MeshBasicMaterial({color: 0x5566aa}),
-  //     maxHeight: 100,
-  //     minHeight: -100,
-  //     steps: 1,
-  //     useBufferGeometry: false,
-  //     xSegments: xS,
-  //     xSize: 1024,
-  //     ySegments: yS,
-  //     ySize: 1024,
-  // });
-  // Assuming you already have your global scene, add the terrain to it
-  // scene.add(terrainScene);
+
   /**
    * Camera
    */
@@ -372,9 +358,9 @@ function init() {
 
   // Controls
   controls = new OrbitControls(camera, canvas);
-  controls.maxPolarAngle = Math.PI * 0.495;
+  // controls.maxPolarAngle = Math.PI * 0.495;
   controls.minDistance = 40.0;
-				controls.maxDistance = 2000.0;
+				// controls.maxDistance = 2000.0;
   controls.enableDamping = true;
   //
 
@@ -430,6 +416,7 @@ function init() {
     elevation: 2,
     azimuth: 180,
   };
+
 
   const pmremGenerator = new THREE.PMREMGenerator(renderer);
 
@@ -513,10 +500,57 @@ function init() {
   var plane = new THREE.Mesh(planeGeo, customMaterial);
   plane.rotation.x = -Math.PI / 2;
   plane.position.y = -4;
-  scene.add(plane);
+  // scene.add(plane);
 
-  //
+  var h = new Image();   // Create new img element
+  h.src = '/assets/images/square-nz.png'; // Set source path
+const heightMapParams ={
+  maxHeight: 50,
+  minHeight: 0,
+  steps: 0,
+  useBufferGeometry: false,
+  intervals: 700,
+  width: 1000,
+  height: 1000,
+  x:1,
+  y:1,
+  z:1,
+}
+  
+  let terrainScene;
 
+function updateTerrain(){
+  scene.remove(terrainScene);
+  terrainScene = new THREE.Terrain({
+    material: new THREE.MeshStandardMaterial({
+    color: 0x44dd66,
+  }),
+  easing: Linear,
+  heightmap: h,
+  maxHeight: heightMapParams.maxHeight,
+  minHeight: heightMapParams.minHeight,
+  steps: heightMapParams.steps,
+  useBufferGeometry: heightMapParams.useBufferGeometry,
+  xSegments: heightMapParams.intervals,
+  width: heightMapParams.height,
+  
+  ySegments: heightMapParams.intervals,
+  height: heightMapParams.height});
+  terrainScene.rotation.x = -Math.PI / 2;
+  terrainScene.position.y = 100
+  
+// terrainScene.children[0].position.x = heightMapParams.x;
+// terrainScene.children[0].position.y = heightMapParams.y;
+// terrainScene.children[0].position.z = heightMapParams.z;
+// terrainScene.children[0].geometry.translate( heightMapParams.x, heightMapParams.y,heightMapParams.z );
+// let s = new THREE.Matrix4().makeScale(heightMapParams.x, heightMapParams.x,1)
+// terrainScene.children[0].geometry.applyMatrix4(s);
+
+  scene.add(terrainScene);
+
+}
+
+  updateTerrain()
 
   //STATS
   stats = new Stats();
@@ -528,18 +562,28 @@ function init() {
   const folderSky = gui.addFolder("Sky");
   folderSky.add(parameters, "elevation", 0, 90, 0.1).onChange(updateSun);
   folderSky.add(parameters, "azimuth", -180, 180, 0.1).onChange(updateSun);
-  folderSky.open();
+  // folderSky.open();
 
   const waterUniforms = water.material.uniforms;
-
   const folderWater = gui.addFolder("Water");
   folderWater
     .add(waterUniforms.distortionScale, "value", 0, 8, 0.1)
     .name("distortionScale");
   folderWater.add(waterUniforms.size, "value", 0.1, 10, 0.1).name("size");
-  folderWater.open();
+  // folderWater.open();
 
-  //
+
+  const folderMap = gui.addFolder("Height Map");
+  folderMap.add(heightMapParams, "maxHeight", 0, 1000, 1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "minHeight", -300, 0, 1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "steps", 0, 10, 1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "intervals", 10, 2000, 1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "height", 1000, 4000, 1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "x", 0, 2, 0.1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "y", 0, 2, 0.1).onChange(updateTerrain);
+  folderMap.add(heightMapParams, "z", 0, 2, 0.1).onChange(updateTerrain);
+  folderMap.open();
+
 
   window.addEventListener("resize", onWindowResize);
 }
