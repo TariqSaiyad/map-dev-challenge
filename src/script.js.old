@@ -22,8 +22,9 @@ import {
 } from "three.terrain.js";
 import { generateTerrain } from "./Terrain";
 
-let camera, scene, renderer, gui, stats, pmremGenerator;
-let controls, water, sun, sky, hemiLight;
+let stats;
+let camera, scene, renderer, gui;
+let controls, water, sun, sky, mesh, another, hemiLight;
 let mainMesh;
 
 let moveForward = false;
@@ -49,9 +50,49 @@ const params = {
   azimuth: 180,
 };
 
+let pmremGenerator;
 
-init();
+var can = document.createElement("canvas");
+var ctx = can.getContext("2d");
+
+const image = new Image(500, 500); // Using optional size for image
+image.onload = drawImageActualSize; // Draw when image has loaded
+
+image.src = "/assets/images/square-nz.png";
+
+let data;
+let isLoaded = false;
+
+let clouds = [];
+
+let prevTime = performance.now();
+let isFPS = true;
+
+function drawImageActualSize() {
+  can.width = this.naturalWidth;
+  can.height = this.naturalHeight;
+
+  ctx.drawImage(this, 0, 0, this.width, this.height);
+  // canvas.appendChild(can)
+  data = ctx.getImageData(0, 0, image.width, image.height);
+  isLoaded = true;
+  console.log("LOADED");
+  init();
 animate();
+}
+
+
+
+
+// function switchCamera() {
+//   if (isFPS) {
+//     controls.dispose();
+//     scene.remove(controls.getObject());
+
+//     controls = new OrbitControls(camera, document.body);
+//     // controls.update();
+//   }
+// }
 
 
 function init() {
@@ -73,6 +114,18 @@ function init() {
   // Add Sky
   initSky();
 
+  // const cloudGeo = new THREE.PlaneGeometry(2000, 2000);
+  // const cloudMaterial = new THREE.ShaderMaterial({
+  //   uniforms: cloudUniforms,
+  //   fragmentShader: document.getElementById("fragmentShader").textContent,
+  //   vertexShader: document.getElementById("vertexShader").textContent,
+  // });
+  // cloudMaterial.transparent = true;
+  // const cloudMesh = new THREE.Mesh(cloudGeo, cloudMaterial)
+  // scene.add(cloudMesh);
+  // cloudMesh.rotation.x = -Math.PI / 2;
+  // cloudMesh.position.y = 200;
+  // createSky();
   generateTerrain(scene,mainMesh);
   
   // scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000) );
@@ -414,7 +467,7 @@ function render() {
   // params.azimuth += (10.0 / 60.0)%180;
   // console.log(sky.material.uniforms);
   // guiChanged();
-  // prevTime = time;
+  prevTime = time;
 
   renderer.render(scene, camera);
 }
