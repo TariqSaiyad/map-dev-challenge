@@ -1,77 +1,103 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import {map, setFaceCol} from "./Helpers";
+import { map, setFaceCol as setCol } from "./Helpers";
 
-const terrainProps = {
+export const p = {
   water: 0.0,
-  sand:0.1,
-  grass:0.3,
-  rock:0.5,
-  snow:0.7
-}
-function generateTerrain(scene, mainMesh){
+  sand: 0.01,
+  grass: 0.3,
+  rock: 0.5,
+  snow: 0.7,
+};
+
+const pos = {
+  x: -1000,
+  y: -500,
+  z: -1000,
+};
+
+class Terrain {
+  constructor() {
+    this.model = null;
+  }
+
+  generateTerrain(scene, mesh) {
     const loader = new GLTFLoader();
     loader.load(
       "assets/images/high.glb",
-      function (gltf) {
-        gltf.scene.scale.set(1000, 1000, 1000);
-        gltf.scene.applyMatrix4(
-          new THREE.Matrix4().makeTranslation(-1000, -500, -1000)
-        );
-  
-        console.log(gltf.scene.position);
-        gltf.scene.receiveShadow = true;
-        gltf.scene.castShadow = true;
-  
-        var model = gltf.scene;
-        let newMaterial = new THREE.MeshStandardMaterial({
-          // wireframe: true,
-          vertexColors: THREE.VertexColors,
-          // required for flat shading
-          flatShading: true,
-        });
-        model.traverse((o) => {
-          if (o.isMesh) {
-            mainMesh = o;
-            o.geometry = o.geometry.toNonIndexed();
-            const mGeo = o.geometry;
-            let faces = mGeo.attributes.position.count;
-            mGeo.setAttribute(
-              "color",
-              new THREE.BufferAttribute(new Float32Array(faces * 3), 3)
-            );
-            const color = new THREE.Color();
-            const colors = mGeo.attributes.color;
-            const positions = mGeo.attributes.position;
-            for (let i = 0; i < colors.count; i += 3) {
-              let a = positions.getY(i);
-              let b = positions.getY(i + 1);
-              let c = positions.getY(i + 2);
-  
-              //assign colors based on the highest point of the face
-              let max = Math.max(a, Math.max(b, c));
-              max = map(max, 0, 0.0493, 0, 1);
-  
-              if (max <= terrainProps.water) setFaceCol(colors, i, 0, 0.3, 1); // blue
-              else if (max <= terrainProps.sand) setFaceCol(colors, i, 1, 0.8, 0.3); // yellow
-              else if (max <= terrainProps.grass) setFaceCol(colors, i, 0, 0.6, 0.2); // green
-              else if (max <= terrainProps.rock) setFaceCol(colors, i, 0.37, 0.29, 0.33); // brown
-              else setFaceCol(colors, i, 1, 0.8, 1); // snow
-            }
-  
-            o.material = newMaterial;
-          }
-        });
-        scene.add(gltf.scene);
-        // const box = new THREE.BoxHelper(gltf.scene, 0xffff00);
-        // scene.add(box);
-      },
+      (gltf) => this.loadGLTF(scene, gltf, mesh),
+      // (e) => console.log(`Loading ${e.total} vertices`),
       undefined,
-      function (error) {
-        console.error(error);
-      }
+      (error) => console.error(error)
     );
+  }
 
+  loadGLTF(scene, gltf, mesh) {
+    const { x, y, z } = pos;
+    const model = gltf.scene;
+
+    model.scale.set(1000, 1000, 1000);
+    model.applyMatrix4(new THREE.Matrix4().makeTranslation(x, y, z));
+
+    model.receiveShadow = true;
+    model.castShadow = true;
+
+    model.traverse((o) => {
+      this.traverseMesh(o);
+      mesh = o;
+    });
+
+    scene.add(model);
+    this.model = model;
+
+    // const box = new THREE.BoxHelper(gltf.scene, 0xffff00);
+    // scene.add(box);
+  }
+
+  traverseMesh(o) {
+    if (o.isMesh) {
+      o.geometry = o.geometry.toNonIndexed();
+      let geo = o.geometry;
+      let faces = geo.attributes.position.count;
+
+      let colorBuffer = new THREE.BufferAttribute(
+        new Float32Array(faces * 3),
+        3
+      );
+      geo.setAttribute("color", colorBuffer);
+
+      const cols = geo.attributes.color;
+      const positions = geo.attributes.position;
+
+      for (let i = 0; i < cols.count; i += 3) {
+        // get vertex of this triangle.
+        let a = positions.getY(i);
+        let b = positions.getY(i + 1);
+        let c = positions.getY(i + 2);
+
+        //assign colors based on the highest point of the face
+        let max = Math.max(a, Math.max(b, c));
+        // map value between 0-1.
+        max = map(max, 0, 0.0493, 0, 1);
+
+        if (max <= p.water) setCol(cols, i, 0, 0.3, 1);
+        // blue
+        else if (max <= p.sand && i % 3 == 0) setCol(cols, i, 1, 0.8, 0.3);
+        // yellow
+        else if (max <= p.grass) setCol(cols, i, 0, 0.6, 0.2);
+        // green
+        else if (max <= p.rock) setCol(cols, i, 0.37, 0.29, 0.33);
+        // brown
+        else setCol(cols, i, 1, 0.8, 1); // snow
+      }
+      let newMaterial = new THREE.MeshStandardMaterial({
+        // wireframe: true,
+        vertexColors: THREE.VertexColors,
+        // required for flat shading
+        flatShading: true,
+      });
+      o.material = newMaterial;
+    }
+  }
 }
 
-
-export {generateTerrain}
+export { Terrain, p as props };

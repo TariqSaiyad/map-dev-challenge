@@ -13,7 +13,12 @@ module.exports = {
   plugins: [
     new CopyWebpackPlugin({
       patterns: [{ from: path.resolve(__dirname, "../static") }],
-      patterns: [{ from: path.resolve(__dirname, "../assets/images"),to:'assets/images' }],
+      patterns: [
+        {
+          from: path.resolve(__dirname, "../assets/images"),
+          to: "assets/images",
+        },
+      ],
     }),
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, "../src/index.html"),
@@ -31,9 +36,17 @@ module.exports = {
 
       // JS
       {
-        test: /\.js$/,
+        test: /\.m?js$/,
         exclude: /node_modules/,
-        use: ["babel-loader"],
+        loader: "babel-loader",
+        options: {
+          presets: [
+            "@babel/preset-env",
+            {
+              plugins: ["@babel/plugin-proposal-class-properties"],
+            },
+          ],
+        },
       },
 
       // CSS

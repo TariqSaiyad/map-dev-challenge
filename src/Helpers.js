@@ -57,11 +57,11 @@ function map(val, smin, smax, emin, emax) {
   }
 
   
-function setFaceCol(colors, index, c1, c2, c3) {
+function setCol(colors, index, c1, c2, c3) {
     colors.setXYZ(index + 0, c1, c2, c3);
     colors.setXYZ(index + 1, c1, c2, c3);
     colors.setXYZ(index + 2, c1, c2, c3);
   }
 
 
-  export {map, setFaceCol, makeCloud, chopBottom, jitter};
+  export {map, setCol as setFaceCol, makeCloud, chopBottom, jitter};

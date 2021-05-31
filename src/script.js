@@ -12,20 +12,19 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 const canvas = document.querySelector("div.container");
-import {
-  Terrain,
-  EaseInWeak,
-  DiamondSquare,
-  Linear,
-  generateBlendedMaterial,
-  scatterMeshes,
-} from "three.terrain.js";
-import { generateTerrain } from "./Terrain";
-
+// import {
+//   Terrain,
+//   EaseInWeak,
+//   DiamondSquare,
+//   Linear,
+//   generateBlendedMaterial,
+//   scatterMeshes,
+// } from "three.terrain.js";
+import { Terrain, props } from "./Terrain";
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
 let mainMesh;
-
+let terrain = new Terrain();
 let moveForward = false;
 let moveBackward = false;
 let moveLeft = false;
@@ -45,14 +44,12 @@ const params = {
   rayleigh: 3,
   mieCoefficient: 0.005,
   mieDirectionalG: 0.7,
-  elevation: 2,
+  elevation: 6,
   azimuth: 180,
 };
 
-
 init();
 animate();
-
 
 function init() {
   createRenderer();
@@ -73,8 +70,18 @@ function init() {
   // Add Sky
   initSky();
 
-  generateTerrain(scene,mainMesh);
-  
+  function terrainChange() {
+    scene.remove(terrain.model);
+    terrain.generateTerrain(scene, mainMesh);
+  }
+
+  terrainChange();
+  gui.add(props, "water", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "sand", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "rock", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "snow", 0.0, 1.0, 0.01).onChange(terrainChange);
+
   // scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000) );
 
   //STATS
@@ -96,7 +103,9 @@ function guiChanged() {
 
   sun.setFromSphericalCoords(1, phi, theta);
   uniforms["sunPosition"].value.copy(sun);
-  water.material.uniforms["sunDirection"].value.copy(sun).normalize();
+  if (water) {
+    water.material.uniforms["sunDirection"].value.copy(sun).normalize();
+  }
 
   scene.environment = pmremGenerator.fromScene(sky).texture;
 }
@@ -128,7 +137,7 @@ function createGround() {
   // // ground.receiveShadow = true;
   // // scene.add(ground);
 
-  const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+  const waterGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
 
   water = new Water(waterGeometry, {
     textureWidth: 512,
@@ -153,7 +162,6 @@ function createGround() {
   water.material.uniforms.size.value = 10;
   scene.add(water);
 }
-
 
 function createSky() {
   const vertexShader = document.getElementById("vertexShader").textContent;
@@ -406,10 +414,11 @@ function render() {
   //   cloud.position.x=Math.sin(time) *THREE.Noise
   //   cloud.position.z=Math.cos(time) *Math.random()
   // });
-
-  water.material.uniforms["time"].value += 1.0 / 60.0;
+  if (water) {
+    water.material.uniforms["time"].value += 1.0 / 60.0;
+  }
   cloudUniforms.iResolution.value.set(512, 512, 1);
-  cloudUniforms.iTime.value = time/3600 ;
+  cloudUniforms.iTime.value = time / 3600;
 
   // params.azimuth += (10.0 / 60.0)%180;
   // console.log(sky.material.uniforms);
