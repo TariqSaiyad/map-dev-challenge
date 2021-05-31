@@ -1,5 +1,5 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { map, setFaceCol as setCol } from "./Helpers";
+import { map, setCol } from "./Helpers";
 
 export const p = {
   water: 0.0,
@@ -17,6 +17,8 @@ const pos = {
 
 class Terrain {
   constructor() {
+    const SimplexNoise = require('simplex-noise');
+    this.simplex = new SimplexNoise('myseed');
     this.model = null;
   }
 
@@ -79,15 +81,19 @@ class Terrain {
         // map value between 0-1.
         max = map(max, 0, 0.0493, 0, 1);
 
-        if (max <= p.water) setCol(cols, i, 0, 0.3, 1);
-        // blue
-        else if (max <= p.sand && i % 3 == 0) setCol(cols, i, 1, 0.8, 0.3);
-        // yellow
-        else if (max <= p.grass) setCol(cols, i, 0, 0.6, 0.2);
-        // green
-        else if (max <= p.rock) setCol(cols, i, 0.37, 0.29, 0.33);
-        // brown
-        else setCol(cols, i, 1, 0.8, 1); // snow
+        // let val = this.simplex.noise3D(a,b,c );
+        // val = map(val, -1, 1, 0, 1);
+
+        if (max <= p.water) 
+          setCol(cols, i, 0.0, 0.3, 1.0); // blue
+        else if (max <= p.sand) 
+          setCol(cols, i, 1.0, 0.8, 0.3); // yellow
+        else if (max <= p.grass)
+          setCol(cols, i, 0.0, 0.6, 0.2); // green
+        else if (max <= p.rock)
+          setCol(cols, i, 0.37, 0.29, 0.33); // brown
+        else 
+          setCol(cols, i, 1.0, 0.8, 1.0); // snow
       }
       let newMaterial = new THREE.MeshStandardMaterial({
         // wireframe: true,

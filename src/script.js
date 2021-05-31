@@ -7,19 +7,9 @@ import * as dat from "dat.gui";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import { SimplifyModifier } from "three/examples/jsm/modifiers/SimplifyModifier.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-
 const canvas = document.querySelector("div.container");
-// import {
-//   Terrain,
-//   EaseInWeak,
-//   DiamondSquare,
-//   Linear,
-//   generateBlendedMaterial,
-//   scatterMeshes,
-// } from "three.terrain.js";
+
+
 import { Terrain, props } from "./Terrain";
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
@@ -47,7 +37,6 @@ const params = {
   elevation: 6,
   azimuth: 180,
 };
-
 init();
 animate();
 
@@ -70,12 +59,27 @@ function init() {
   // Add Sky
   initSky();
 
+  var skyGeo = new THREE.SphereGeometry(100000, 25, 25); 
+  var skyMaterial = new THREE.ShaderMaterial({ 
+    uniforms: {
+      iTime: { value: 1.0 },
+      iResolution: { value: new THREE.Vector2() }
+    },
+    vertexShader: document.getElementById('vertexShader'),
+	fragmentShader: document.getElementById('fragmentShader'),
+});
+var skyMesh = new THREE.Mesh(skyGeo, skyMaterial);
+// sky.material.side = THREE.BackSide;
+// scene.add(skyMesh);
   function terrainChange() {
+    if(terrain.model){
+      terrain.model.children[2].geometry.dispose()
+    }
     scene.remove(terrain.model);
     terrain.generateTerrain(scene, mainMesh);
   }
-
   terrainChange();
+  
   gui.add(props, "water", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "sand", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
@@ -109,6 +113,7 @@ function guiChanged() {
 
   scene.environment = pmremGenerator.fromScene(sky).texture;
 }
+
 function initSky() {
   sky = new Sky();
   sky.scale.setScalar(10000);

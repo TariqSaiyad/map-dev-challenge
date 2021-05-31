@@ -64,4 +64,4 @@ function setCol(colors, index, c1, c2, c3) {
   }
 
 
-  export {map, setCol as setFaceCol, makeCloud, chopBottom, jitter};
+  export {map, setCol, makeCloud, chopBottom, jitter};
