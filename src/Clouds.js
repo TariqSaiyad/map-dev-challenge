@@ -5,7 +5,7 @@ const WORLD_SIZE = 8000;
 
 class Clouds {
   constructor(numClouds, scene) {
-    this.numClouds = 1;
+    this.numClouds = numClouds;
     this.clouds = [];
     this.name = "CLOUD";
     this.initMesh(scene);
@@ -42,17 +42,18 @@ class Clouds {
         bumpScale: 12,
     });
 
-    // let newgeo = new THREE.SphereGeometry(1000,100,100);
+    // let newgeo = new THREE.SphereGeometry(4000);
 
     geo.computeVertexNormals();
     console.time("(build)");
 
     const matrix = new THREE.Matrix4();
     const mesh = new THREE.InstancedMesh(geo, material, this.numClouds);
-
+    
     for (let i = 0; i < this.numClouds; i++) {
       this.randomizeMatrix(matrix);
       mesh.setMatrixAt(i, matrix);
+      mesh.name=this.name
       mesh.receiveShadow = true;
       mesh.castShadow = true;
     }
@@ -70,12 +71,12 @@ class Clouds {
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3();
 
-    // position.x = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
-    // position.y = Math.random() * 500 + 50;
-    // position.z = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
-    position.x = 0;
-    position.y = 300;
-    position.z = 0;
+    position.x = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
+    position.y = Math.random() * 500 + 50;
+    position.z = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
+    // position.x = 0;
+    // position.y = 300;
+    // position.z = 0;
 
     rotation.x = Math.PI / 2;
     // rotation.y = Math.random() * 2 * Math.PI;
@@ -83,8 +84,8 @@ class Clouds {
 
     quaternion.setFromEuler(rotation);
 
-    scale.x = scale.y = scale.z = 0.03;
-    // scale.x = scale.y = scale.z = Math.random() * 0.03;
+    // scale.x = scale.y = scale.z = 0.03;
+    scale.x = scale.y = scale.z = Math.random() * 0.03;
 
     matrix.compose(position, quaternion, scale);
   }

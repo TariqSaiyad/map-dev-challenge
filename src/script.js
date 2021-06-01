@@ -53,7 +53,7 @@ function init() {
   // controls.maxDistance = 2000.0;
   controls.enableDamping = true;
 
-  // createLights();
+  createLights();
 
   // GROUND
   createGround();
@@ -92,6 +92,8 @@ function init() {
   gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "rock", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "snow", 0.0, 1.0, 0.01).onChange(terrainChange);
+
+
 
   // scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000) );
 
@@ -200,38 +202,37 @@ function createSky() {
 }
 
 function createLights() {
-  hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
-  hemiLight.color.setHSL(0.6, 1, 0.6);
-  hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-  hemiLight.position.set(0, 50, 0);
-  scene.add(hemiLight);
-  const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
-  scene.add(hemiLightHelper);
+  // hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
+  // hemiLight.color.setHSL(0.6, 1, 0.6);
+  // hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+  // hemiLight.position.set(0, 5000, 0);
+  // scene.add(hemiLight);
+  // const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
+  // scene.add(hemiLightHelper);
 
-  //
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.color.setHSL(0.1, 1, 0.95);
-  dirLight.position.set(0, 1000, 0);
-  // dirLight.position.multiplyScalar(30);
-  scene.add(dirLight);
+  const dirLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+				dirLight.color.setHSL( 0.1, 1, 0.95 );
+				dirLight.position.set( 0, 25, 0 );
+				dirLight.position.multiplyScalar( 30 );
+				scene.add( dirLight );
 
-  dirLight.castShadow = true;
+				dirLight.castShadow = true;
 
-  dirLight.shadow.mapSize.width = 10000;
-  dirLight.shadow.mapSize.height = 10000;
+				dirLight.shadow.mapSize.width = 10000;
+				dirLight.shadow.mapSize.height = 10000;
 
-  const d = 10000;
+				const d = 10000;
 
-  dirLight.shadow.camera.left = -d;
-  dirLight.shadow.camera.right = d;
-  dirLight.shadow.camera.top = d;
-  dirLight.shadow.camera.bottom = -d;
+				dirLight.shadow.camera.left = - d;
+				dirLight.shadow.camera.right = d;
+				dirLight.shadow.camera.top = d;
+				dirLight.shadow.camera.bottom = - d;
 
-  dirLight.shadow.camera.far = 55000;
-  dirLight.shadow.bias = -0.0001;
-  dirLight.castShadow = true;
-  const dirLightHelper = new THREE.DirectionalLightHelper(dirLight, 10);
-  scene.add(dirLightHelper);
+				dirLight.shadow.camera.far = 10000;
+				// dirLight.shadow.bias = - 1;
+
+				// const dirLightHelper = new THREE.DirectionalLightHelper( dirLight, 100 );
+				// scene.add( dirLightHelper );
 }
 
 function createControls() {
