@@ -81,19 +81,19 @@ class Terrain {
         // map value between 0-1.
         max = map(max, 0, 0.0493, 0, 1);
 
-        // let val = this.simplex.noise3D(a,b,c );
-        // val = map(val, -1, 1, 0, 1);
-
+        let val = this.simplex.noise3D(a,b,c );
+        val = map(val, -1, 1, 0, 1);
+        setCol(cols, i, val, val,val); // blue
         if (max <= p.water) 
           setCol(cols, i, 0.0, 0.3, 1.0); // blue
         else if (max <= p.sand) 
           setCol(cols, i, 1.0, 0.8, 0.3); // yellow
         else if (max <= p.grass)
-          setCol(cols, i, 0.0, 0.6, 0.2); // green
+          setCol(cols, i, 0.44, 0.7, 0.18); // green
         else if (max <= p.rock)
-          setCol(cols, i, 0.37, 0.29, 0.33); // brown
+          setCol(cols, i, 0.3, 0.3, 0.3); // brown
         else 
-          setCol(cols, i, 1.0, 0.8, 1.0); // snow
+          setCol(cols, i, 0.92, 0.98, 0.98); // snow
       }
       let newMaterial = new THREE.MeshStandardMaterial({
         // wireframe: true,
