@@ -9,12 +9,13 @@ import { Water } from "three/examples/jsm/objects/Water.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 const canvas = document.querySelector("div.container");
 
-
-import { Terrain, props } from "./Terrain";
+import { Terrain, props, MAP_NAME } from "./Terrain";
+import { Clouds } from "./Clouds";
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
 let mainMesh;
 let terrain = new Terrain();
+let clouds;
 let moveForward = false;
 let moveBackward = false;
 let moveLeft = false;
@@ -31,11 +32,11 @@ const cloudUniforms = {
 /// sky stuff
 const params = {
   turbidity: 10,
-  rayleigh: 3,
-  mieCoefficient: 0.005,
-  mieDirectionalG: 0.7,
-  elevation: 6,
-  azimuth: 180,
+  rayleigh: 4,
+  mieCoefficient: 0.1,
+  mieDirectionalG: 0.8,
+  elevation: 12,
+  azimuth: 90,
 };
 init();
 animate();
@@ -49,7 +50,7 @@ function init() {
   controls = new OrbitControls(camera, canvas);
   controls.maxPolarAngle = Math.PI * 0.495;
   controls.minDistance = 40.0;
-  controls.maxDistance = 2000.0;
+  // controls.maxDistance = 2000.0;
   controls.enableDamping = true;
 
   // createLights();
@@ -59,27 +60,33 @@ function init() {
   // Add Sky
   initSky();
 
-  var skyGeo = new THREE.SphereGeometry(100000, 25, 25); 
-  var skyMaterial = new THREE.ShaderMaterial({ 
+  var skyGeo = new THREE.SphereGeometry(100000, 25, 25);
+  var skyMaterial = new THREE.ShaderMaterial({
     uniforms: {
       iTime: { value: 1.0 },
-      iResolution: { value: new THREE.Vector2() }
+      iResolution: { value: new THREE.Vector2() },
     },
-    vertexShader: document.getElementById('vertexShader'),
-	fragmentShader: document.getElementById('fragmentShader'),
-});
-var skyMesh = new THREE.Mesh(skyGeo, skyMaterial);
-// sky.material.side = THREE.BackSide;
-// scene.add(skyMesh);
+    vertexShader: document.getElementById("vertexShader"),
+    fragmentShader: document.getElementById("fragmentShader"),
+  });
+  var skyMesh = new THREE.Mesh(skyGeo, skyMaterial);
+  // sky.material.side = THREE.BackSide;
+  // scene.add(skyMesh);
   function terrainChange() {
-    if(terrain.model){
-      terrain.model.children[2].geometry.dispose()
+    // clean up
+    if (terrain.model) {
+      console.log(terrain.model);
+      terrain.model.geometry.dispose();
+      terrain.model.material.dispose();
+      scene.children.forEach((child) =>
+        child.name == MAP_NAME ? scene.remove(child) : null
+      );
     }
-    scene.remove(terrain.model);
+    console.log(scene);
     terrain.generateTerrain(scene, mainMesh);
   }
   terrainChange();
-  
+
   gui.add(props, "water", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "sand", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
@@ -163,7 +170,7 @@ function createGround() {
   water.rotation.x = -Math.PI / 2;
   water.position.y = 17.5;
   // gui.add(water.position, 'y', -10,50,1).name('water height');
-
+  water.receiveShadow = true;
   water.material.uniforms.size.value = 10;
   scene.add(water);
 }
@@ -198,32 +205,31 @@ function createLights() {
   hemiLight.groundColor.setHSL(0.095, 1, 0.75);
   hemiLight.position.set(0, 50, 0);
   scene.add(hemiLight);
-
   const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
   scene.add(hemiLightHelper);
 
   //
   const dirLight = new THREE.DirectionalLight(0xffffff, 1);
   dirLight.color.setHSL(0.1, 1, 0.95);
-  dirLight.position.set(-1, 1.75, 1);
-  dirLight.position.multiplyScalar(30);
+  dirLight.position.set(0, 1000, 0);
+  // dirLight.position.multiplyScalar(30);
   scene.add(dirLight);
 
   dirLight.castShadow = true;
 
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
+  dirLight.shadow.mapSize.width = 10000;
+  dirLight.shadow.mapSize.height = 10000;
 
-  const d = 50;
+  const d = 10000;
 
   dirLight.shadow.camera.left = -d;
   dirLight.shadow.camera.right = d;
   dirLight.shadow.camera.top = d;
   dirLight.shadow.camera.bottom = -d;
 
-  dirLight.shadow.camera.far = 5500;
+  dirLight.shadow.camera.far = 55000;
   dirLight.shadow.bias = -0.0001;
-
+  dirLight.castShadow = true;
   const dirLightHelper = new THREE.DirectionalLightHelper(dirLight, 10);
   scene.add(dirLightHelper);
 }
@@ -340,6 +346,8 @@ function createCamera() {
 
 function createScene() {
   scene = new THREE.Scene();
+  clouds = new Clouds(100, scene);
+
   // scene.background = new THREE.Color().setHSL(0.6, 0, 1);
   // scene.fog = new THREE.Fog(scene.background, 50, 500);
 }
@@ -349,6 +357,7 @@ function createRenderer() {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
+  // renderer.physicallyCorrectLights = true;
   canvas.appendChild(renderer.domElement);
   pmremGenerator = new THREE.PMREMGenerator(renderer);
 

@@ -1,6 +1,8 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { map, setCol } from "./Helpers";
 
+export const MAP_NAME = "NZ-MAP";
+
 export const p = {
   water: 0.0,
   sand: 0.01,
@@ -10,15 +12,15 @@ export const p = {
 };
 
 const pos = {
-  x: -1000,
-  y: -500,
-  z: -1000,
+  x: 0,
+  y: 21,
+  z: 0,
 };
 
 class Terrain {
   constructor() {
-    const SimplexNoise = require('simplex-noise');
-    this.simplex = new SimplexNoise('myseed');
+    const SimplexNoise = require("simplex-noise");
+    this.simplex = new SimplexNoise("myseed");
     this.model = null;
   }
 
@@ -40,22 +42,28 @@ class Terrain {
     model.scale.set(1000, 1000, 1000);
     model.applyMatrix4(new THREE.Matrix4().makeTranslation(x, y, z));
 
-    model.receiveShadow = true;
-    model.castShadow = true;
-
     model.traverse((o) => {
-      this.traverseMesh(o);
-      mesh = o;
+      console.log();
+      if (o.type === "Mesh") {
+        o.scale.set(1000, 1000, 1000);
+        o.applyMatrix4(new THREE.Matrix4().makeTranslation(x, y, z));
+        o.receiveShadow = true;
+        o.castShadow = true;
+
+        this.traverseMesh(o, scene);
+        mesh = o;
+        mesh.name = MAP_NAME;
+        this.model = o;
+      }
     });
 
-    scene.add(model);
-    this.model = model;
+    // scene.add(model);
 
     // const box = new THREE.BoxHelper(gltf.scene, 0xffff00);
     // scene.add(box);
   }
 
-  traverseMesh(o) {
+  traverseMesh(o, scene) {
     if (o.isMesh) {
       o.geometry = o.geometry.toNonIndexed();
       let geo = o.geometry;
@@ -81,19 +89,18 @@ class Terrain {
         // map value between 0-1.
         max = map(max, 0, 0.0493, 0, 1);
 
-        let val = this.simplex.noise3D(a,b,c );
+        let val = this.simplex.noise3D(a, b, c);
         val = map(val, -1, 1, 0, 1);
-        setCol(cols, i, val, val,val); // blue
-        if (max <= p.water) 
-          setCol(cols, i, 0.0, 0.3, 1.0); // blue
-        else if (max <= p.sand) 
-          setCol(cols, i, 1.0, 0.8, 0.3); // yellow
-        else if (max <= p.grass)
-          setCol(cols, i, 0.44, 0.7, 0.18); // green
-        else if (max <= p.rock)
-          setCol(cols, i, 0.3, 0.3, 0.3); // brown
-        else 
-          setCol(cols, i, 0.92, 0.98, 0.98); // snow
+        setCol(cols, i, val, val, val); // blue
+        if (max <= p.water) setCol(cols, i, 0.0, 0.3, 1.0);
+        // blue
+        else if (max <= p.sand) setCol(cols, i, 1.0, 0.8, 0.3);
+        // yellow
+        else if (max <= p.grass) setCol(cols, i, 0.44, 0.7, 0.18);
+        // green
+        else if (max <= p.rock) setCol(cols, i, 0.3, 0.3, 0.3);
+        // brown
+        else setCol(cols, i, 0.92, 0.98, 0.98); // snow
       }
       let newMaterial = new THREE.MeshStandardMaterial({
         // wireframe: true,
@@ -102,6 +109,7 @@ class Terrain {
         flatShading: true,
       });
       o.material = newMaterial;
+      scene.add(o);
     }
   }
 }
