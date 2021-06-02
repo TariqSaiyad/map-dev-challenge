@@ -14,6 +14,7 @@ import { Clouds } from "./Clouds";
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
 let mainMesh;
+let prevTime = performance.now();
 let terrain = new Terrain();
 let clouds;
 
@@ -43,11 +44,18 @@ const params = {
 init();
 animate();
 
+
+function updateControls() {
+  isFPS=!isFPS;
+  console.log(isFPS? 'FPS MODE': 'ORBIT MODE');
+  createControls();
+}
+
 function init() {
   const onKeyDown = function (event) {
     switch (event.code) {
       case "KeyC":
-        isFPS=!isFPS;
+        updateControls()
         break;
       case "ArrowUp":
       case "KeyW":
@@ -99,6 +107,22 @@ function init() {
         break;
     }
   };
+
+  const instructions = document.getElementById("instructions");
+    instructions.addEventListener(
+      "click",
+       () => {instructions.style.display = "none";  blocker.style.display = "none";},
+      false
+    );
+  
+    // controls.addEventListener("lock", function () {
+    //   instructions.style.display = "none";
+    //   blocker.style.display = "none";
+    // });
+    // controls.addEventListener("unlock", function () {
+    //   blocker.style.display = "block";
+    //   instructions.style.display = "";
+    // });
 
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
@@ -292,27 +316,32 @@ function createLights() {
 }
 
 function createControls() {
+  if(controls){
+    controls.dispose()
+  }
   if(isFPS){
     controls = new PointerLockControls(camera, document.body);
-    let instructions = document.getElementById("instructions");
-    instructions.addEventListener(
-      "click",
-       () => {controls.lock();},
-      false
-    );
+    controls.lock();
+
+    // let instructions = document.getElementById("instructions");
+    // instructions.addEventListener(
+    //   "click",
+    //    () => {},
+    //   false
+    // );
   
-    controls.addEventListener("lock", function () {
-      instructions.style.display = "none";
-      blocker.style.display = "none";
-    });
-    controls.addEventListener("unlock", function () {
-      blocker.style.display = "block";
-      instructions.style.display = "";
-    });
+    // controls.addEventListener("lock", function () {
+    //   instructions.style.display = "none";
+    //   blocker.style.display = "none";
+    // });
+    // controls.addEventListener("unlock", function () {
+    //   blocker.style.display = "block";
+    //   instructions.style.display = "";
+    // });
     scene.add(controls.getObject());
 
     raycaster = new THREE.Raycaster(
-      new THREE.Vector3(),
+      controls.getObject().position,
       new THREE.Vector3(0, -1, 0),
       0,
       50
@@ -381,46 +410,52 @@ function animate() {
 
 function render() {
   const time = performance.now();
-  // if (controls.isLocked === true) {
-  //   raycaster.ray.origin.copy(controls.getObject().position);
-  //   // raycaster.set(controls.getObject().position, direction) //set the position and direction
+  if (controls.isLocked === true) {
+    raycaster.ray.origin.copy(controls.getObject().position);
+    // raycaster.set(controls.getObject().position, direction) //set the position and direction
 
-  //   // raycaster.ray.origin.y = 10;
+    // raycaster.ray.origin.y = 10;
 
-  //   const intersections = raycaster.intersectObjects([mainMesh]);
-  //   const onObject = intersections.length > 0;
+    const intersections = raycaster.intersectObjects([terrain.model]);
+    const onObject = intersections.length > 0;
 
-  //   const delta = (time - prevTime) / 1000;
+    const delta = (time - prevTime) / 1000;
 
-  //   velocity.x -= velocity.x * 10.0 * delta;
-  //   velocity.z -= velocity.z * 10.0 * delta;
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z -= velocity.z * 10.0 * delta;
 
-  //   velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+    velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
 
-  //   direction.z = Number(moveForward) - Number(moveBackward);
-  //   direction.x = Number(moveRight) - Number(moveLeft);
-  //   direction.normalize(); // this ensures consistent movements in all directions
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize(); // this ensures consistent movements in all directions
 
-  //   if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-  //   if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+    if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+    if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
 
-  //   if (onObject === true) {
-  //     velocity.y = Math.max(0, velocity.y);
-  //     canJump = true;
-  //   }
+    if (onObject === true) {
+      const pointHeight = intersections[0].point.y;
+const relativeHeight = controls.getObject().position.y - pointHeight;
+console.log(relativeHeight);
 
-  //   controls.moveRight(-velocity.x * delta);
-  //   controls.moveForward(-velocity.z * delta);
+velocity.y = Math.max(0, velocity.y);
+  controls.getObject().position.y = (velocity.y+pointHeight);
 
-  //   controls.getObject().position.y += velocity.y * delta; // new behavior
+      canJump = true;
+    }
 
-  //   if (controls.getObject().position.y <= 0) {
-  //     velocity.y = 0;
-  //     controls.getObject().position.y = 0;
+    controls.moveRight(-velocity.x * delta);
+    controls.moveForward(-velocity.z * delta);
 
-  //     canJump = true;
-  //   }
-  // }
+    controls.getObject().position.y += velocity.y * delta; // new behavior
+
+    if (controls.getObject().position.y <= 0) {
+      velocity.y = 0;
+      controls.getObject().position.y = 0;
+
+      canJump = true;
+    }
+  }
 
   // mesh.position.y = Math.sin(time) * 20 + 5;
   // mesh.rotation.x = time * 0.5;
@@ -430,16 +465,18 @@ function render() {
   //   cloud.position.x=Math.sin(time) *THREE.Noise
   //   cloud.position.z=Math.cos(time) *Math.random()
   // });
+
   if (water) {
     water.material.uniforms["time"].value += 1.0 / 60.0;
   }
-  cloudUniforms.iResolution.value.set(512, 512, 1);
-  cloudUniforms.iTime.value = time / 3600;
+
+  // cloudUniforms.iResolution.value.set(512, 512, 1);
+  // cloudUniforms.iTime.value = time / 3600;
 
   // params.azimuth += (10.0 / 60.0)%180;
   // console.log(sky.material.uniforms);
   // guiChanged();
-  // prevTime = time;
+  prevTime = time;
 
   renderer.render(scene, camera);
 }
