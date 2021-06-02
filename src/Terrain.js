@@ -1,11 +1,17 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { map, setCol } from "./Helpers";
-
+import {
+  MeshStandardMaterial,
+  Matrix4,
+  BoxHelper,
+  BufferAttribute,
+  VertexColors,
+} from "three";
 export const MAP_NAME = "NZ-MAP";
 
 // TODO:
 // 1) add option to switch controls
-// 2) add ray casting to terrain -  
+// 2) add ray casting to terrain -
 // https://stackoverflow.com/questions/16077725/three-js-precision-terrain-collision
 // https://www.youtube.com/watch?v=Kyfb-zDhsMc
 
@@ -46,13 +52,13 @@ class Terrain {
     const model = gltf.scene;
 
     model.scale.set(1000, 1000, 1000);
-    model.applyMatrix4(new THREE.Matrix4().makeTranslation(x, y, z));
+    model.applyMatrix4(new Matrix4().makeTranslation(x, y, z));
 
     model.traverse((o) => {
       console.log();
       if (o.type === "Mesh") {
         o.scale.set(1000, 1000, 1000);
-        o.applyMatrix4(new THREE.Matrix4().makeTranslation(x, y, z));
+        o.applyMatrix4(new Matrix4().makeTranslation(x, y, z));
         o.receiveShadow = true;
         o.castShadow = true;
 
@@ -65,7 +71,7 @@ class Terrain {
 
     // scene.add(model);
 
-    // const box = new THREE.BoxHelper(gltf.scene, 0xffff00);
+    // const box = new BoxHelper(gltf.scene, 0xffff00);
     // scene.add(box);
   }
 
@@ -75,10 +81,7 @@ class Terrain {
       let geo = o.geometry;
       let faces = geo.attributes.position.count;
 
-      let colorBuffer = new THREE.BufferAttribute(
-        new Float32Array(faces * 3),
-        3
-      );
+      let colorBuffer = new BufferAttribute(new Float32Array(faces * 3), 3);
       geo.setAttribute("color", colorBuffer);
 
       const cols = geo.attributes.color;
@@ -108,12 +111,15 @@ class Terrain {
         // brown
         else setCol(cols, i, 0.92, 0.98, 0.98); // snow
       }
-      let newMaterial = new THREE.MeshStandardMaterial({
+      let newMaterial = new MeshStandardMaterial({
         // wireframe: true,
-        vertexColors: THREE.VertexColors,
+        vertexColors: VertexColors,
         // required for flat shading
         flatShading: true,
       });
+
+      o.geometry.computeFaceNormals();
+      o.geometry.computeVertexNormals();
       o.material = newMaterial;
       scene.add(o);
     }

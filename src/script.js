@@ -1,5 +1,5 @@
 import "./style.css";
-// import * as THREE from "three";
+import * as THREE from "three";
 
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -7,10 +7,16 @@ import * as dat from "dat.gui";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-const canvas = document.querySelector("div.container");
+// import { AmmoPhysics, PhysicsLoader } from "@enable3d/ammo-physics";
+// import Ammo from '@enable3d/ammo-physics'
+const { Physics, ServerClock } = require("@enable3d/ammo-on-nodejs");
 
-import { Terrain, props, MAP_NAME } from "./Terrain";
+var _ammo = require("@enable3d/ammo-on-nodejs/ammo/ammo.js");
+
+import { Terrain, props, MAP_NAME, p } from "./Terrain";
 import { Clouds } from "./Clouds";
+const canvas = document.querySelector("div.container");
+let physics;
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
 let mainMesh;
@@ -41,21 +47,89 @@ const params = {
   elevation: 12,
   azimuth: 90,
 };
-init();
-animate();
 
+// PhysicsLoader("./ammo", () => {
 
+// });
+
+_ammo().then((ammo) => {
+  globalThis.Ammo = ammo;
+  console.log("Ammo", new Ammo.btVector3(1, 2, 3).y() === 2);
+
+  init();
+  animate();
+});
 function updateControls() {
-  isFPS=!isFPS;
-  console.log(isFPS? 'FPS MODE': 'ORBIT MODE');
+  isFPS = !isFPS;
+  console.log(isFPS ? "FPS MODE" : "ORBIT MODE");
   createControls();
 }
 
 function init() {
+  setupCallbacks();
+
+  createRenderer();
+  createScene();
+  createCamera();
+  createControls();
+
+  createLights();
+
+  // GROUND
+  createGround();
+  // Add Sky
+  initSky();
+
+  var skyGeo = new THREE.SphereGeometry(100000, 25, 25);
+  var skyMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      iTime: { value: 1.0 },
+      iResolution: { value: new THREE.Vector2() },
+    },
+    vertexShader: document.getElementById("vertexShader"),
+    fragmentShader: document.getElementById("fragmentShader"),
+  });
+  var skyMesh = new THREE.Mesh(skyGeo, skyMaterial);
+  // sky.material.side = THREE.BackSide;
+  // scene.add(skyMesh);
+  function terrainChange() {
+    // clean up
+    if (terrain.model) {
+      console.log(terrain.model);
+      terrain.model.geometry.dispose();
+      terrain.model.material.dispose();
+      scene.children.forEach((child) =>
+        child.name == MAP_NAME ? scene.remove(child) : null
+      );
+    }
+    console.log(scene);
+    terrain.generateTerrain(scene, mainMesh);
+    if (terrain.model) {
+      physics.add.existing(terrain.model, { shape: "convex" });
+    }
+  }
+  terrainChange();
+
+  gui.add(props, "water", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "sand", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "rock", 0.0, 1.0, 0.01).onChange(terrainChange);
+  gui.add(props, "snow", 0.0, 1.0, 0.01).onChange(terrainChange);
+
+  // scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000) );
+
+  //STATS
+  stats = new Stats();
+  canvas.appendChild(stats.dom);
+
+  window.addEventListener("resize", onWindowResize);
+}
+
+function setupCallbacks() {
   const onKeyDown = function (event) {
     switch (event.code) {
       case "KeyC":
-        updateControls()
+        updateControls();
         break;
       case "ArrowUp":
       case "KeyW":
@@ -108,80 +182,26 @@ function init() {
     }
   };
 
-  const instructions = document.getElementById("instructions");
-    instructions.addEventListener(
-      "click",
-       () => {instructions.style.display = "none";  blocker.style.display = "none";},
-      false
-    );
-  
-    // controls.addEventListener("lock", function () {
-    //   instructions.style.display = "none";
-    //   blocker.style.display = "none";
-    // });
-    // controls.addEventListener("unlock", function () {
-    //   blocker.style.display = "block";
-    //   instructions.style.display = "";
-    // });
+  // const instructions = document.getElementById("instructions");
+  // instructions.addEventListener(
+  //   "click",
+  //   () => {
+  //     instructions.style.display = "none";
+  //     blocker.style.display = "none";
+  //   },
+  //   false
+  // );
 
+  // controls.addEventListener("lock", function () {
+  //   instructions.style.display = "none";
+  //   blocker.style.display = "none";
+  // });
+  // controls.addEventListener("unlock", function () {
+  //   blocker.style.display = "block";
+  //   instructions.style.display = "";
+  // });
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
-
-  createRenderer();
-  createScene();
-  createCamera();
-  createControls();
-
-
-  createLights();
-
-  // GROUND
-  createGround();
-  // Add Sky
-  initSky();
-
-  var skyGeo = new THREE.SphereGeometry(100000, 25, 25);
-  var skyMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      iTime: { value: 1.0 },
-      iResolution: { value: new THREE.Vector2() },
-    },
-    vertexShader: document.getElementById("vertexShader"),
-    fragmentShader: document.getElementById("fragmentShader"),
-  });
-  var skyMesh = new THREE.Mesh(skyGeo, skyMaterial);
-  // sky.material.side = THREE.BackSide;
-  // scene.add(skyMesh);
-  function terrainChange() {
-    // clean up
-    if (terrain.model) {
-      console.log(terrain.model);
-      terrain.model.geometry.dispose();
-      terrain.model.material.dispose();
-      scene.children.forEach((child) =>
-        child.name == MAP_NAME ? scene.remove(child) : null
-      );
-    }
-    console.log(scene);
-    terrain.generateTerrain(scene, mainMesh);
-  }
-  terrainChange();
-
-  gui.add(props, "water", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "sand", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "rock", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "snow", 0.0, 1.0, 0.01).onChange(terrainChange);
-
-
-
-  // scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000) );
-
-  //STATS
-  stats = new Stats();
-  canvas.appendChild(stats.dom);
-
-  window.addEventListener("resize", onWindowResize);
 }
 
 function guiChanged() {
@@ -290,36 +310,36 @@ function createLights() {
   // const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
   // scene.add(hemiLightHelper);
 
-  const dirLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-				dirLight.color.setHSL( 0.1, 1, 0.95 );
-				dirLight.position.set( 0, 25, 0 );
-				dirLight.position.multiplyScalar( 30 );
-				scene.add( dirLight );
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  dirLight.color.setHSL(0.1, 1, 0.95);
+  dirLight.position.set(0, 25, 0);
+  dirLight.position.multiplyScalar(30);
+  scene.add(dirLight);
 
-				dirLight.castShadow = true;
+  dirLight.castShadow = true;
 
-				dirLight.shadow.mapSize.width = 10000;
-				dirLight.shadow.mapSize.height = 10000;
+  dirLight.shadow.mapSize.width = 10000;
+  dirLight.shadow.mapSize.height = 10000;
 
-				const d = 10000;
+  const d = 10000;
 
-				dirLight.shadow.camera.left = - d;
-				dirLight.shadow.camera.right = d;
-				dirLight.shadow.camera.top = d;
-				dirLight.shadow.camera.bottom = - d;
+  dirLight.shadow.camera.left = -d;
+  dirLight.shadow.camera.right = d;
+  dirLight.shadow.camera.top = d;
+  dirLight.shadow.camera.bottom = -d;
 
-				dirLight.shadow.camera.far = 10000;
-				// dirLight.shadow.bias = - 1;
+  dirLight.shadow.camera.far = 10000;
+  // dirLight.shadow.bias = - 1;
 
-				// const dirLightHelper = new THREE.DirectionalLightHelper( dirLight, 100 );
-				// scene.add( dirLightHelper );
+  // const dirLightHelper = new THREE.DirectionalLightHelper( dirLight, 100 );
+  // scene.add( dirLightHelper );
 }
 
 function createControls() {
-  if(controls){
-    controls.dispose()
+  if (controls) {
+    controls.dispose();
   }
-  if(isFPS){
+  if (isFPS) {
     controls = new PointerLockControls(camera, document.body);
     controls.lock();
 
@@ -329,7 +349,7 @@ function createControls() {
     //    () => {},
     //   false
     // );
-  
+
     // controls.addEventListener("lock", function () {
     //   instructions.style.display = "none";
     //   blocker.style.display = "none";
@@ -346,14 +366,13 @@ function createControls() {
       0,
       50
     );
-  }else{
+  } else {
     controls = new OrbitControls(camera, canvas);
     controls.maxPolarAngle = Math.PI * 0.495;
     controls.minDistance = 40.0;
     // controls.maxDistance = 2000.0;
     controls.enableDamping = true;
   }
-  
 }
 
 function createCamera() {
@@ -378,7 +397,19 @@ function createCamera() {
 function createScene() {
   scene = new THREE.Scene();
   clouds = new Clouds(100, scene);
-
+  // physics
+  physics = new Physics();
+  physics.scene = scene;
+  const box = physics.add.box({
+    width: 100,
+    height: 100,
+    depth: 100,
+    name: "box",
+    y: 550,
+  });
+  scene.add(box);
+  console.log(physics);
+  // physics.debug.enable(true);
   // scene.background = new THREE.Color().setHSL(0.6, 0, 1);
   // scene.fog = new THREE.Fog(scene.background, 50, 500);
 }
@@ -435,14 +466,31 @@ function render() {
 
     if (onObject === true) {
       const pointHeight = intersections[0].point.y;
-const relativeHeight = controls.getObject().position.y - pointHeight;
-console.log(relativeHeight);
+      const relativeHeight = controls.getObject().position.y - pointHeight;
+      // console.log(relativeHeight);
 
-velocity.y = Math.max(0, velocity.y);
-let v = new THREE.Vector3(0,relativeHeight,0).normalize()
-// v = velocity.add(v).normalize()
-  controls.getObject().position.y += (v.y*delta);
+      // velocity.y = Math.max(0, velocity.y);
+      // let v = new THREE.Vector3(0, relativeHeight, 0).normalize();
+      // controls.getObject().position.y =intersections[0].point.add(new THREE.Vector3( 0, 70, 0 )).y ;
+      // v = velocity.add(v).normalize()
+      // controls.getObject().position.y += v.y * delta;
 
+      // Flatten velocity
+      velocity.y = 0;
+
+      // // Measure the rotation from global "up" vector to the surface normal
+      // let up = new THREE.Vector3(0, 1, 0);
+      // let normal = new THREE.Vector3().copy(rayResult.hitNormalWorld);
+      // let q = new THREE.Quaternion().setFromUnitVectors(up, normal);
+
+      // // Rotate an identity matrix
+      // let matrix = new THREE.Matrix4().makeRotationFromQuaternion(q);
+
+      // // Apply the matrix to appropriately rotate the velocity vector
+      // newVelocity.applyMatrix4(matrix);
+
+      // // Apply velocity
+      // this.velocity.copy(newVelocity);
       canJump = true;
     }
 
@@ -478,6 +526,8 @@ let v = new THREE.Vector3(0,relativeHeight,0).normalize()
   // params.azimuth += (10.0 / 60.0)%180;
   // console.log(sky.material.uniforms);
   // guiChanged();
+  physics.update(time * 1000);
+
   prevTime = time;
 
   renderer.render(scene, camera);

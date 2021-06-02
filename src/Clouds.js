@@ -1,6 +1,13 @@
-import { AmbientLight, BoxHelper, TextureLoader } from "three";
+import {
+  MeshStandardMaterial,
+  TextureLoader,
+  Matrix4,
+  InstancedMesh,
+  Vector3,
+  Euler,
+  Quaternion
+} from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-
 const WORLD_SIZE = 8000;
 
 class Clouds {
@@ -26,20 +33,19 @@ class Clouds {
   }
 
   loadGeometry(geo, scene) {
- 
     let tex = new TextureLoader().load("assets/images/waternormals.jpg");
-    let material = new THREE.MeshStandardMaterial({
-    //   color: 0x552811,
+    let material = new MeshStandardMaterial({
+      //   color: 0x552811,
       specular: 0x222222,
       shininess: 25,
       normalMap: tex,
-      refractionRatio: 0.98,
-      reflectivity: 0.9,
-      flatShading: true,
-        displacementScale:10,
-        normalScale: THREE.Vector2(10, 10),
-        bumpMap: tex,
-        bumpScale: 12,
+      // refractionRatio: 0.98,
+      // reflectivity: 0.9,
+      // flatShading: true,
+      //   // displacementScale:10,
+      //   // normalScale: new THREE.Vector2(10, 10),
+      //   bumpMap: tex,
+      //   bumpScale: 12,
     });
 
     // let newgeo = new THREE.SphereGeometry(4000);
@@ -47,17 +53,16 @@ class Clouds {
     geo.computeVertexNormals();
     console.time("(build)");
 
-    const matrix = new THREE.Matrix4();
-    const mesh = new THREE.InstancedMesh(geo, material, this.numClouds);
-    
+    const matrix = new Matrix4();
+    const mesh = new InstancedMesh(geo, material, this.numClouds);
+
     for (let i = 0; i < this.numClouds; i++) {
       this.randomizeMatrix(matrix);
       mesh.setMatrixAt(i, matrix);
-      mesh.name=this.name
+      mesh.name = this.name;
       mesh.receiveShadow = true;
       mesh.castShadow = true;
     }
-    
 
     scene.add(mesh);
 
@@ -66,10 +71,10 @@ class Clouds {
   }
 
   randomizeMatrix(matrix) {
-    const position = new THREE.Vector3();
-    const rotation = new THREE.Euler();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
+    const position = new Vector3();
+    const rotation = new Euler();
+    const quaternion = new Quaternion();
+    const scale = new Vector3();
 
     position.x = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
     position.y = Math.random() * 500 + 50;
