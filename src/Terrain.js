@@ -3,6 +3,11 @@ import { map, setCol } from "./Helpers";
 
 export const MAP_NAME = "NZ-MAP";
 
+// TODO:
+// 1) add option to switch controls
+// 2) add ray casting to terrain -  
+// https://stackoverflow.com/questions/16077725/three-js-precision-terrain-collision
+
 export const p = {
   water: 0.0,
   sand: 0.01,
