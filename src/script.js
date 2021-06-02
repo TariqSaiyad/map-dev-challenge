@@ -439,7 +439,9 @@ const relativeHeight = controls.getObject().position.y - pointHeight;
 console.log(relativeHeight);
 
 velocity.y = Math.max(0, velocity.y);
-  controls.getObject().position.y = (velocity.y+pointHeight);
+let v = new THREE.Vector3(0,relativeHeight,0).normalize()
+// v = velocity.add(v).normalize()
+  controls.getObject().position.y += (v.y*delta);
 
       canJump = true;
     }
