@@ -16,6 +16,8 @@ let controls, water, sun, sky, hemiLight;
 let mainMesh;
 let terrain = new Terrain();
 let clouds;
+
+let isFPS;
 let moveForward = false;
 let moveBackward = false;
 let moveLeft = false;
@@ -42,16 +44,70 @@ init();
 animate();
 
 function init() {
+  const onKeyDown = function (event) {
+    switch (event.code) {
+      case "KeyC":
+        isFPS=!isFPS;
+        break;
+      case "ArrowUp":
+      case "KeyW":
+        moveForward = true;
+        break;
+
+      case "ArrowLeft":
+      case "KeyA":
+        moveLeft = true;
+        break;
+
+      case "ArrowDown":
+      case "KeyS":
+        moveBackward = true;
+        break;
+
+      case "ArrowRight":
+      case "KeyD":
+        moveRight = true;
+        break;
+
+      case "Space":
+        if (canJump === true) velocity.y += 350;
+        canJump = false;
+        break;
+    }
+  };
+
+  const onKeyUp = function (event) {
+    switch (event.code) {
+      case "ArrowUp":
+      case "KeyW":
+        moveForward = false;
+        break;
+
+      case "ArrowLeft":
+      case "KeyA":
+        moveLeft = false;
+        break;
+
+      case "ArrowDown":
+      case "KeyS":
+        moveBackward = false;
+        break;
+
+      case "ArrowRight":
+      case "KeyD":
+        moveRight = false;
+        break;
+    }
+  };
+
+  document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("keyup", onKeyUp);
+
   createRenderer();
   createScene();
   createCamera();
-  // createControls();
+  createControls();
 
-  controls = new OrbitControls(camera, canvas);
-  controls.maxPolarAngle = Math.PI * 0.495;
-  controls.minDistance = 40.0;
-  // controls.maxDistance = 2000.0;
-  controls.enableDamping = true;
 
   createLights();
 
@@ -236,94 +292,39 @@ function createLights() {
 }
 
 function createControls() {
-  controls = new PointerLockControls(camera, document.body);
-  let instructions = document.getElementById("instructions");
-  instructions.addEventListener(
-    "click",
-    function () {
-      controls.lock();
-    },
-    false
-  );
+  if(isFPS){
+    controls = new PointerLockControls(camera, document.body);
+    let instructions = document.getElementById("instructions");
+    instructions.addEventListener(
+      "click",
+       () => {controls.lock();},
+      false
+    );
+  
+    controls.addEventListener("lock", function () {
+      instructions.style.display = "none";
+      blocker.style.display = "none";
+    });
+    controls.addEventListener("unlock", function () {
+      blocker.style.display = "block";
+      instructions.style.display = "";
+    });
+    scene.add(controls.getObject());
 
-  controls.addEventListener("lock", function () {
-    instructions.style.display = "none";
-    blocker.style.display = "none";
-  });
-  controls.addEventListener("unlock", function () {
-    blocker.style.display = "block";
-    instructions.style.display = "";
-  });
-  scene.add(controls.getObject());
-  // controls.maxPolarAngle = Math.PI * 0.495;
-  // controls.minDistance = 40.0;
-  // controls.maxDistance = 2000.0;
-  // controls.enableDamping = true;
-  const onKeyDown = function (event) {
-    switch (event.code) {
-      case "KeyC":
-        switchCamera();
-        break;
-      case "ArrowUp":
-      case "KeyW":
-        moveForward = true;
-        break;
-
-      case "ArrowLeft":
-      case "KeyA":
-        moveLeft = true;
-        break;
-
-      case "ArrowDown":
-      case "KeyS":
-        moveBackward = true;
-        break;
-
-      case "ArrowRight":
-      case "KeyD":
-        moveRight = true;
-        break;
-
-      case "Space":
-        if (canJump === true) velocity.y += 350;
-        canJump = false;
-        break;
-    }
-  };
-
-  const onKeyUp = function (event) {
-    switch (event.code) {
-      case "ArrowUp":
-      case "KeyW":
-        moveForward = false;
-        break;
-
-      case "ArrowLeft":
-      case "KeyA":
-        moveLeft = false;
-        break;
-
-      case "ArrowDown":
-      case "KeyS":
-        moveBackward = false;
-        break;
-
-      case "ArrowRight":
-      case "KeyD":
-        moveRight = false;
-        break;
-    }
-  };
-
-  document.addEventListener("keydown", onKeyDown);
-  document.addEventListener("keyup", onKeyUp);
-
-  raycaster = new THREE.Raycaster(
-    new THREE.Vector3(),
-    new THREE.Vector3(0, -1, 0),
-    0,
-    50
-  );
+    raycaster = new THREE.Raycaster(
+      new THREE.Vector3(),
+      new THREE.Vector3(0, -1, 0),
+      0,
+      50
+    );
+  }else{
+    controls = new OrbitControls(camera, canvas);
+    controls.maxPolarAngle = Math.PI * 0.495;
+    controls.minDistance = 40.0;
+    // controls.maxDistance = 2000.0;
+    controls.enableDamping = true;
+  }
+  
 }
 
 function createCamera() {

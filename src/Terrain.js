@@ -7,6 +7,7 @@ export const MAP_NAME = "NZ-MAP";
 // 1) add option to switch controls
 // 2) add ray casting to terrain -  
 // https://stackoverflow.com/questions/16077725/three-js-precision-terrain-collision
+// https://www.youtube.com/watch?v=Kyfb-zDhsMc
 
 export const p = {
   water: 0.0,
