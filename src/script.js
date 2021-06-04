@@ -1,25 +1,28 @@
 import "./style.css";
 import * as THREE from "three";
-
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import * as dat from "dat.gui";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
+import { Octree } from "three/examples/jsm/math/Octree.js";
+import { Capsule } from "three/examples/jsm/math/Capsule.js";
 // import { AmmoPhysics, PhysicsLoader } from "@enable3d/ammo-physics";
 // import Ammo from '@enable3d/ammo-physics'
 const { Physics, ServerClock } = require("@enable3d/ammo-on-nodejs");
-
 var _ammo = require("@enable3d/ammo-on-nodejs/ammo/ammo.js");
 
 import { Terrain, props, MAP_NAME, p } from "./Terrain";
 import { Clouds } from "./Clouds";
 const canvas = document.querySelector("div.container");
 const relHeightContainer = document.getElementById("relative-height");
+const clock = new THREE.Clock();
+
 let physics;
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
+
 let mainMesh;
 let prevTime = performance.now();
 let terrain = new Terrain();
@@ -49,9 +52,93 @@ const params = {
   azimuth: 90,
 };
 
-// PhysicsLoader("./ammo", () => {
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
+const worldOctree = new Octree();
+const playerCollider = new Capsule(
+  new THREE.Vector3(0, 35, 0),
+  new THREE.Vector3(0, 1, 0),
+  5
+);
 
-// });
+const playerVelocity = new THREE.Vector3();
+const playerDirection = new THREE.Vector3();
+let playerOnFloor = false;
+const speed = 70;
+
+function playerCollitions() {
+  const result = worldOctree.capsuleIntersect(playerCollider);
+  playerOnFloor = false;
+  if (result) {
+    playerOnFloor = result.normal.y > 0;
+
+    if (!playerOnFloor) {
+      console.log("no floor");
+      playerVelocity.addScaledVector(
+        result.normal,
+        -result.normal.dot(playerVelocity)
+      );
+    }
+
+    playerCollider.translate(result.normal.multiplyScalar(result.depth));
+  }
+}
+
+function updatePlayer(deltaTime) {
+  const damping = Math.exp(-2 * deltaTime) - 1;
+  playerVelocity.addScaledVector(playerVelocity, damping);
+
+  if (!playerOnFloor) {
+    playerVelocity.y += -150 * deltaTime;
+  }
+
+  const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime);
+  playerCollider.translate(deltaPosition);
+
+  playerCollitions();
+
+  camera.position.copy(playerCollider.end);
+}
+
+function getForwardVector() {
+  camera.getWorldDirection(playerDirection);
+  playerDirection.y = 0;
+  playerDirection.normalize();
+
+  return playerDirection;
+}
+
+function getSideVector() {
+  camera.getWorldDirection(playerDirection);
+  playerDirection.y = 0;
+  playerDirection.normalize();
+  playerDirection.cross(camera.up);
+
+  return playerDirection;
+}
+
+function controlsFn(deltaTime) {
+  // if (playerOnFloor) {
+  if (moveForward) {
+    playerVelocity.add(getForwardVector().multiplyScalar(speed * deltaTime));
+  }
+
+  if (moveBackward) {
+    playerVelocity.add(getForwardVector().multiplyScalar(-speed * deltaTime));
+  }
+
+  if (moveLeft) {
+    playerVelocity.add(getSideVector().multiplyScalar(-speed * deltaTime));
+  }
+
+  if (moveRight) {
+    playerVelocity.add(getSideVector().multiplyScalar(speed * deltaTime));
+  }
+
+  if (canJump) {
+    playerVelocity.y = 150;
+  }
+  // }
+}
 
 _ammo().then((ammo) => {
   globalThis.Ammo = ammo;
@@ -59,6 +146,7 @@ _ammo().then((ammo) => {
   init();
   animate();
 });
+
 function updateControls() {
   isFPS = !isFPS;
   console.log(isFPS ? "FPS MODE" : "ORBIT MODE");
@@ -80,21 +168,10 @@ function init() {
   // console.log(physics);
   // const g = physics.add.ground({ y: 10, width: 400, height: 400, name: 'ground-1' },{ lambert: { color: 'cornflowerblue' }})
   // console.log('ground',g);
+
   // Add Sky
   initSky();
 
-  var skyGeo = new THREE.SphereGeometry(100000, 25, 25);
-  var skyMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      iTime: { value: 1.0 },
-      iResolution: { value: new THREE.Vector2() },
-    },
-    vertexShader: document.getElementById("vertexShader"),
-    fragmentShader: document.getElementById("fragmentShader"),
-  });
-  var skyMesh = new THREE.Mesh(skyGeo, skyMaterial);
-  // sky.material.side = THREE.BackSide;
-  // scene.add(skyMesh);
   function terrainChange() {
     // clean up
     if (terrain.model) {
@@ -106,7 +183,7 @@ function init() {
       );
     }
     console.log(scene);
-    terrain.generateTerrain(scene, mainMesh, physics);
+    terrain.generateTerrain(scene, mainMesh, physics, worldOctree);
   }
   terrainChange();
 
@@ -151,8 +228,8 @@ function setupCallbacks() {
         break;
 
       case "Space":
-        if (canJump === true) velocity.y += 350;
-        canJump = false;
+        // if (canJump === true) velocity.y += 350;
+        canJump = true;
         break;
     }
   };
@@ -178,27 +255,12 @@ function setupCallbacks() {
       case "KeyD":
         moveRight = false;
         break;
+      case "Space":
+        canJump = false;
+        break;
     }
   };
 
-  // const instructions = document.getElementById("instructions");
-  // instructions.addEventListener(
-  //   "click",
-  //   () => {
-  //     instructions.style.display = "none";
-  //     blocker.style.display = "none";
-  //   },
-  //   false
-  // );
-
-  // controls.addEventListener("lock", function () {
-  //   instructions.style.display = "none";
-  //   blocker.style.display = "none";
-  // });
-  // controls.addEventListener("unlock", function () {
-  //   blocker.style.display = "block";
-  //   instructions.style.display = "";
-  // });
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
 }
@@ -240,16 +302,6 @@ function initSky() {
 }
 
 function createGround() {
-  // const groundGeo = new THREE.PlaneGeometry(10000, 10000);
-  // const groundMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  // groundMat.color.setHSL(0.095, 1, 0.75);
-
-  // const ground = new THREE.Mesh(groundGeo, groundMat);
-  // ground.position.y = -33;
-  // ground.rotation.x = -Math.PI / 2;
-  // // ground.receiveShadow = true;
-  // // scene.add(ground);
-
   const waterGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
 
   water = new Water(waterGeometry, {
@@ -301,14 +353,6 @@ function createSky() {
 }
 
 function createLights() {
-  // hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
-  // hemiLight.color.setHSL(0.6, 1, 0.6);
-  // hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-  // hemiLight.position.set(0, 5000, 0);
-  // scene.add(hemiLight);
-  // const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
-  // scene.add(hemiLightHelper);
-
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
   dirLight.color.setHSL(0.1, 1, 0.95);
   dirLight.position.set(0, 25, 0);
@@ -341,37 +385,6 @@ function createControls() {
   if (isFPS) {
     controls = new PointerLockControls(camera, document.body);
     controls.lock();
-
-    // let instructions = document.getElementById("instructions");
-    // instructions.addEventListener(
-    //   "click",
-    //    () => {},
-    //   false
-    // );
-
-    // controls.addEventListener("lock", function () {
-    //   instructions.style.display = "none";
-    //   blocker.style.display = "none";
-    // });
-    // controls.addEventListener("unlock", function () {
-    //   blocker.style.display = "block";
-    //   instructions.style.display = "";
-    // });
-    scene.add(controls.getObject());
-
-    raycaster = new THREE.Raycaster(
-      controls.getObject().position,
-      new THREE.Vector3(0, -1, 0),
-      5,
-      20
-    );
-    rayHelper = new THREE.ArrowHelper(
-      raycaster.ray.direction,
-      raycaster.ray.origin,
-      100,
-      0xff0000
-    );
-    scene.add(rayHelper);
   } else {
     controls = new OrbitControls(camera, canvas);
     controls.maxPolarAngle = Math.PI * 0.495;
@@ -394,9 +407,10 @@ function createCamera() {
   let FAR = 10000;
 
   camera = new THREE.PerspectiveCamera(fov, ratio, NEAR, FAR);
-  camera.position.set(0, 900, 0);
+  camera.position.set(10, 200, 0);
   // camera.position.y = 10;
   camera.lookAt(scene.position);
+  playerCollider.translate(camera.position);
   scene.add(camera);
 }
 
@@ -406,6 +420,7 @@ function createScene() {
   // physics
   physics = new Physics();
   physics.scene = scene;
+
   // const box = physics.add.box({
   //   width: 100,
   //   height: 100,
@@ -416,8 +431,7 @@ function createScene() {
   // scene.add(box);
   console.log(physics);
   // physics.debug.enable();
-  // scene.background = new THREE.Color().setHSL(0.6, 0, 1);
-  // scene.fog = new THREE.Fog(scene.background, 50, 500);
+  // scene.fog = new THREE.Fog(scene.background, 500, 5000);
 }
 
 function createRenderer() {
@@ -435,7 +449,6 @@ function createRenderer() {
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
@@ -447,84 +460,14 @@ function animate() {
 
 function render() {
   const time = performance.now();
-  if (controls.isLocked === true) {
-    raycaster.ray.origin.copy(controls.getObject().position);
 
-    // raycaster.set(controls.getObject().position, direction) //set the position and direction
+  if (isFPS) {
+    const deltaTime = Math.min(0.1, clock.getDelta());
 
-    // raycaster.ray.origin.y = 10;
-
-    const intersections = raycaster.intersectObjects([terrain.model]);
-    const onObject = intersections.length > 0;
-
-    const delta = (time - prevTime) / 1000;
-
-    velocity.x -= velocity.x * 10.0 * delta;
-    velocity.z -= velocity.z * 10.0 * delta;
-
-    velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-    direction.z = Number(moveForward) - Number(moveBackward);
-    direction.x = Number(moveRight) - Number(moveLeft);
-    direction.normalize(); // this ensures consistent movements in all directions
-
-    if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-    if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
-    let pointHeight = 0;
-    if (onObject === true) {
-      // pointHeight = intersections[0].point.y;
-      // console.log(intersections[0]);
-      // const relativeHeight = controls.getObject().position.y - pointHeight;
-      // // console.log(relativeHeight);
-
-      // // velocity.y = Math.max(0, velocity.y);
-      // let v = new THREE.Vector3(0, pointHeight, 0);
-      // v.setLength(5);
-      // velocity.y = Math.max(0, v.y);
-
-      let result = intersections[0].face;
-      let playerOnFloor = result.normal.y > 0;
-
-      if (!playerOnFloor) {
-        console.log("NOYE");
-        velocity.addScaledVector(
-          result.normal,
-          -result.normal.dot(velocity)
-        );
-      }
-      let transBy = result.normal.multiplyScalar(intersections[0].distance).y;
-      controls.getObject().position.y += -transBy*delta;
-      // controls.getObject().translateY(transBy);
-
-      // velocity.y = v.y
-      canJump = true;
-    }
-
-    controls.moveRight(-velocity.x * delta);
-    controls.moveForward(-velocity.z * delta);
-
-    controls.getObject().position.y += velocity.y * delta; // new behavior
-
-    if (controls.getObject().position.y <= 0) {
-      velocity.y = 0;
-      controls.getObject().position.y = 0;
-
-      canJump = true;
-    }
-
-    relHeightContainer.innerHTML = `pos: ${controls
-      .getObject()
-      .position.y.toFixed(2)} - h: ${pointHeight.toFixed(2)}`;
+    controlsFn(deltaTime);
+    updatePlayer(deltaTime);
+    relHeightContainer.innerHTML = `y: ${playerVelocity.y.toFixed(2)}`;
   }
-
-  // mesh.position.y = Math.sin(time) * 20 + 5;
-  // mesh.rotation.x = time * 0.5;
-  // mesh.rotation.z = time * 0.51;
-
-  // clouds.forEach((cloud) => {
-  //   cloud.position.x=Math.sin(time) *THREE.Noise
-  //   cloud.position.z=Math.cos(time) *Math.random()
-  // });
 
   if (water) {
     water.material.uniforms["time"].value += 1.0 / 60.0;
@@ -536,8 +479,7 @@ function render() {
   // params.azimuth += (10.0 / 60.0)%180;
   // console.log(sky.material.uniforms);
   // guiChanged();
-  physics.update(time * 1000);
-
+  // physics.update(time * 1000);
   prevTime = time;
 
   renderer.render(scene, camera);

@@ -15,6 +15,7 @@ export const MAP_NAME = "NZ-MAP";
 // https://stackoverflow.com/questions/16077725/three-js-precision-terrain-collision
 // https://www.youtube.com/watch?v=Kyfb-zDhsMc
 // https://threejs.org/docs/#api/en/objects/LOD
+// https://github.com/gkjohnson/three-mesh-bvh
 
 export const p = {
   water: 0.0,
@@ -26,7 +27,7 @@ export const p = {
 
 const pos = {
   x: 0,
-  y: 21,
+  y: 20,
   z: 0,
 };
 
@@ -37,21 +38,20 @@ class Terrain {
     this.model = null;
   }
 
-  generateTerrain(scene, mesh,physics) {
+  generateTerrain(scene, mesh, physics, worldOctree) {
     const loader = new GLTFLoader();
     loader.load(
       "assets/images/high.glb",
-      (gltf) => this.loadGLTF(scene, gltf, mesh,physics),
+      (gltf) => this.loadGLTF(scene, gltf, mesh, physics, worldOctree),
       // (e) => console.log(`Loading ${e.total} vertices`),
       undefined,
       (error) => console.error(error)
     );
   }
 
-  loadGLTF(scene, gltf, mesh,physics) {
+  loadGLTF(scene, gltf, mesh, physics, worldOctree) {
     const { x, y, z } = pos;
     const model = gltf.scene;
-
     model.scale.set(1000, 1000, 1000);
     model.applyMatrix4(new Matrix4().makeTranslation(x, y, z));
 
@@ -63,21 +63,22 @@ class Terrain {
         o.receiveShadow = true;
         o.castShadow = true;
 
-        this.traverseMesh(o, scene);
+        this.traverseMesh(o, scene, worldOctree);
         mesh = o;
         mesh.name = MAP_NAME;
         this.model = o;
-        physics.add.existing(o, { shape: "convex", collisionFlags:1 });
+        worldOctree.fromGraphNode(o);
+        // console.log(worldOctree);
+        // physics.add.existing(o, { shape: "convex", collisionFlags: 1 });
       }
     });
-
     // scene.add(model);
 
     // const box = new BoxHelper(gltf.scene, 0xffff00);
     // scene.add(box);
   }
 
-  traverseMesh(o, scene) {
+  traverseMesh(o, scene, worldOctree) {
     if (o.isMesh) {
       o.geometry = o.geometry.toNonIndexed();
       let geo = o.geometry;
