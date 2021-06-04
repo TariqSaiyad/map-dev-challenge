@@ -14,6 +14,7 @@ export const MAP_NAME = "NZ-MAP";
 // 2) add ray casting to terrain -
 // https://stackoverflow.com/questions/16077725/three-js-precision-terrain-collision
 // https://www.youtube.com/watch?v=Kyfb-zDhsMc
+// https://threejs.org/docs/#api/en/objects/LOD
 
 export const p = {
   water: 0.0,
@@ -36,18 +37,18 @@ class Terrain {
     this.model = null;
   }
 
-  generateTerrain(scene, mesh) {
+  generateTerrain(scene, mesh,physics) {
     const loader = new GLTFLoader();
     loader.load(
       "assets/images/high.glb",
-      (gltf) => this.loadGLTF(scene, gltf, mesh),
+      (gltf) => this.loadGLTF(scene, gltf, mesh,physics),
       // (e) => console.log(`Loading ${e.total} vertices`),
       undefined,
       (error) => console.error(error)
     );
   }
 
-  loadGLTF(scene, gltf, mesh) {
+  loadGLTF(scene, gltf, mesh,physics) {
     const { x, y, z } = pos;
     const model = gltf.scene;
 
@@ -66,6 +67,7 @@ class Terrain {
         mesh = o;
         mesh.name = MAP_NAME;
         this.model = o;
+        physics.add.existing(o, { shape: "convex", collisionFlags:1 });
       }
     });
 

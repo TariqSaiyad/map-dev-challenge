@@ -32,4 +32,9 @@ body
     cursor: pointer;
 }
 
+#relative-height{
+    position: absolute;
+    bottom: 0;
+}
+
 

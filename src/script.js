@@ -16,6 +16,7 @@ var _ammo = require("@enable3d/ammo-on-nodejs/ammo/ammo.js");
 import { Terrain, props, MAP_NAME, p } from "./Terrain";
 import { Clouds } from "./Clouds";
 const canvas = document.querySelector("div.container");
+const relHeightContainer = document.getElementById("relative-height");
 let physics;
 let camera, scene, renderer, gui, stats, pmremGenerator;
 let controls, water, sun, sky, hemiLight;
@@ -30,7 +31,7 @@ let moveBackward = false;
 let moveLeft = false;
 let moveRight = false;
 let canJump = false;
-let raycaster;
+let raycaster, rayHelper;
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 
@@ -55,7 +56,6 @@ const params = {
 _ammo().then((ammo) => {
   globalThis.Ammo = ammo;
   console.log("Ammo", new Ammo.btVector3(1, 2, 3).y() === 2);
-
   init();
   animate();
 });
@@ -67,7 +67,6 @@ function updateControls() {
 
 function init() {
   setupCallbacks();
-
   createRenderer();
   createScene();
   createCamera();
@@ -77,6 +76,10 @@ function init() {
 
   // GROUND
   createGround();
+
+  // console.log(physics);
+  // const g = physics.add.ground({ y: 10, width: 400, height: 400, name: 'ground-1' },{ lambert: { color: 'cornflowerblue' }})
+  // console.log('ground',g);
   // Add Sky
   initSky();
 
@@ -103,10 +106,7 @@ function init() {
       );
     }
     console.log(scene);
-    terrain.generateTerrain(scene, mainMesh);
-    if (terrain.model) {
-      physics.add.existing(terrain.model, { shape: "convex" });
-    }
+    terrain.generateTerrain(scene, mainMesh, physics);
   }
   terrainChange();
 
@@ -116,10 +116,9 @@ function init() {
   gui.add(props, "rock", 0.0, 1.0, 0.01).onChange(terrainChange);
   gui.add(props, "snow", 0.0, 1.0, 0.01).onChange(terrainChange);
 
-  // scene.add(new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000) );
-
   //STATS
   stats = new Stats();
+  stats.add;
   canvas.appendChild(stats.dom);
 
   window.addEventListener("resize", onWindowResize);
@@ -363,9 +362,16 @@ function createControls() {
     raycaster = new THREE.Raycaster(
       controls.getObject().position,
       new THREE.Vector3(0, -1, 0),
-      0,
-      50
+      5,
+      20
     );
+    rayHelper = new THREE.ArrowHelper(
+      raycaster.ray.direction,
+      raycaster.ray.origin,
+      100,
+      0xff0000
+    );
+    scene.add(rayHelper);
   } else {
     controls = new OrbitControls(camera, canvas);
     controls.maxPolarAngle = Math.PI * 0.495;
@@ -396,20 +402,20 @@ function createCamera() {
 
 function createScene() {
   scene = new THREE.Scene();
-  clouds = new Clouds(100, scene);
+  clouds = new Clouds(50, scene);
   // physics
   physics = new Physics();
   physics.scene = scene;
-  const box = physics.add.box({
-    width: 100,
-    height: 100,
-    depth: 100,
-    name: "box",
-    y: 550,
-  });
-  scene.add(box);
+  // const box = physics.add.box({
+  //   width: 100,
+  //   height: 100,
+  //   depth: 100,
+  //   name: "box",
+  //   y: 550,
+  // });
+  // scene.add(box);
   console.log(physics);
-  // physics.debug.enable(true);
+  // physics.debug.enable();
   // scene.background = new THREE.Color().setHSL(0.6, 0, 1);
   // scene.fog = new THREE.Fog(scene.background, 50, 500);
 }
@@ -443,6 +449,7 @@ function render() {
   const time = performance.now();
   if (controls.isLocked === true) {
     raycaster.ray.origin.copy(controls.getObject().position);
+
     // raycaster.set(controls.getObject().position, direction) //set the position and direction
 
     // raycaster.ray.origin.y = 10;
@@ -463,34 +470,33 @@ function render() {
 
     if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
     if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
-
+    let pointHeight = 0;
     if (onObject === true) {
-      const pointHeight = intersections[0].point.y;
-      const relativeHeight = controls.getObject().position.y - pointHeight;
-      // console.log(relativeHeight);
+      // pointHeight = intersections[0].point.y;
+      // console.log(intersections[0]);
+      // const relativeHeight = controls.getObject().position.y - pointHeight;
+      // // console.log(relativeHeight);
 
-      // velocity.y = Math.max(0, velocity.y);
-      // let v = new THREE.Vector3(0, relativeHeight, 0).normalize();
-      // controls.getObject().position.y =intersections[0].point.add(new THREE.Vector3( 0, 70, 0 )).y ;
-      // v = velocity.add(v).normalize()
-      // controls.getObject().position.y += v.y * delta;
+      // // velocity.y = Math.max(0, velocity.y);
+      // let v = new THREE.Vector3(0, pointHeight, 0);
+      // v.setLength(5);
+      // velocity.y = Math.max(0, v.y);
 
-      // Flatten velocity
-      velocity.y = 0;
+      let result = intersections[0].face;
+      let playerOnFloor = result.normal.y > 0;
 
-      // // Measure the rotation from global "up" vector to the surface normal
-      // let up = new THREE.Vector3(0, 1, 0);
-      // let normal = new THREE.Vector3().copy(rayResult.hitNormalWorld);
-      // let q = new THREE.Quaternion().setFromUnitVectors(up, normal);
+      if (!playerOnFloor) {
+        console.log("NOYE");
+        velocity.addScaledVector(
+          result.normal,
+          -result.normal.dot(velocity)
+        );
+      }
+      let transBy = result.normal.multiplyScalar(intersections[0].distance).y;
+      controls.getObject().position.y += -transBy*delta;
+      // controls.getObject().translateY(transBy);
 
-      // // Rotate an identity matrix
-      // let matrix = new THREE.Matrix4().makeRotationFromQuaternion(q);
-
-      // // Apply the matrix to appropriately rotate the velocity vector
-      // newVelocity.applyMatrix4(matrix);
-
-      // // Apply velocity
-      // this.velocity.copy(newVelocity);
+      // velocity.y = v.y
       canJump = true;
     }
 
@@ -505,6 +511,10 @@ function render() {
 
       canJump = true;
     }
+
+    relHeightContainer.innerHTML = `pos: ${controls
+      .getObject()
+      .position.y.toFixed(2)} - h: ${pointHeight.toFixed(2)}`;
   }
 
   // mesh.position.y = Math.sin(time) * 20 + 5;
