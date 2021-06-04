@@ -1,49 +1,49 @@
-import "./style.css";
 import * as THREE from "three";
-import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import * as dat from "dat.gui";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import Stats from "stats.js";
+import { GUI } from "dat.gui";
+import { map, setCol } from "./Helpers";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
-import Stats from "three/examples/jsm/libs/stats.module.js";
-import { Octree } from "three/examples/jsm/math/Octree.js";
-import { Capsule } from "three/examples/jsm/math/Capsule.js";
-// import { AmmoPhysics, PhysicsLoader } from "@enable3d/ammo-physics";
-// import Ammo from '@enable3d/ammo-physics'
-const { Physics, ServerClock } = require("@enable3d/ammo-on-nodejs");
-var _ammo = require("@enable3d/ammo-on-nodejs/ammo/ammo.js");
-
-import { Terrain, props, MAP_NAME, p } from "./Terrain";
 import { Clouds } from "./Clouds";
-const canvas = document.querySelector("div.container");
-const relHeightContainer = document.getElementById("relative-height");
-const clock = new THREE.Clock();
+import {
+  computeBoundsTree,
+  disposeBoundsTree,
+  acceleratedRaycast,
+  MeshBVH,
+  MeshBVHVisualizer,
+} from "three-mesh-bvh";
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 
-let physics;
-let camera, scene, renderer, gui, stats, pmremGenerator;
-let controls, water, sun, sky, hemiLight;
+THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
-let mainMesh;
-let prevTime = performance.now();
-let terrain = new Terrain();
-let clouds;
+const SimplexNoise = require("simplex-noise");
+const simplex = new SimplexNoise("myseed");
 
-let isFPS;
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-let canJump = false;
-let raycaster, rayHelper;
-const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
-
-const cloudUniforms = {
-  iTime: { value: 0 },
-  iResolution: { value: new THREE.Vector3() },
+export const p = {
+  water: 0.0,
+  sand: 0.01,
+  grass: 0.3,
+  rock: 0.5,
+  snow: 0.7,
 };
-/// sky stuff
+
 const params = {
+  firstPerson: false,
+
+  displayCollider: false,
+  displayBVH: false,
+  visualizeDepth: 10,
+  gravity: -30,
+  playerSpeed: 10,
+  physicsSteps: 5,
+
+  reset: reset,
+
   turbidity: 10,
   rayleigh: 4,
   mieCoefficient: 0.1,
@@ -51,218 +51,46 @@ const params = {
   elevation: 12,
   azimuth: 90,
 };
+let camera, scene, renderer, gui, controls, stats, clock, pmremGenerator;
+let water, sun, sky, clouds, hemiLight;
+let environment, collider, visualizer, player;
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
-const worldOctree = new Octree();
-const playerCollider = new Capsule(
-  new THREE.Vector3(0, 35, 0),
-  new THREE.Vector3(0, 1, 0),
-  5
-);
+let playerIsOnGround = false;
+let fwdPressed = false,
+  bkdPressed = false,
+  lftPressed = false,
+  rgtPressed = false;
+let playerVelocity = new THREE.Vector3();
+let upVector = new THREE.Vector3(0, 1, 0);
+let tempVector = new THREE.Vector3();
+let tempVector2 = new THREE.Vector3();
+let tempBox = new THREE.Box3();
+let tempMat = new THREE.Matrix4();
+let tempSegment = new THREE.Line3();
 
-const playerVelocity = new THREE.Vector3();
-const playerDirection = new THREE.Vector3();
-let playerOnFloor = false;
-const speed = 70;
-
-function playerCollitions() {
-  const result = worldOctree.capsuleIntersect(playerCollider);
-  playerOnFloor = false;
-  if (result) {
-    playerOnFloor = result.normal.y > 0;
-
-    if (!playerOnFloor) {
-      console.log("no floor");
-      playerVelocity.addScaledVector(
-        result.normal,
-        -result.normal.dot(playerVelocity)
-      );
-    }
-
-    playerCollider.translate(result.normal.multiplyScalar(result.depth));
-  }
-}
-
-function updatePlayer(deltaTime) {
-  const damping = Math.exp(-2 * deltaTime) - 1;
-  playerVelocity.addScaledVector(playerVelocity, damping);
-
-  if (!playerOnFloor) {
-    playerVelocity.y += -150 * deltaTime;
-  }
-
-  const deltaPosition = playerVelocity.clone().multiplyScalar(deltaTime);
-  playerCollider.translate(deltaPosition);
-
-  playerCollitions();
-
-  camera.position.copy(playerCollider.end);
-}
-
-function getForwardVector() {
-  camera.getWorldDirection(playerDirection);
-  playerDirection.y = 0;
-  playerDirection.normalize();
-
-  return playerDirection;
-}
-
-function getSideVector() {
-  camera.getWorldDirection(playerDirection);
-  playerDirection.y = 0;
-  playerDirection.normalize();
-  playerDirection.cross(camera.up);
-
-  return playerDirection;
-}
-
-function controlsFn(deltaTime) {
-  // if (playerOnFloor) {
-  if (moveForward) {
-    playerVelocity.add(getForwardVector().multiplyScalar(speed * deltaTime));
-  }
-
-  if (moveBackward) {
-    playerVelocity.add(getForwardVector().multiplyScalar(-speed * deltaTime));
-  }
-
-  if (moveLeft) {
-    playerVelocity.add(getSideVector().multiplyScalar(-speed * deltaTime));
-  }
-
-  if (moveRight) {
-    playerVelocity.add(getSideVector().multiplyScalar(speed * deltaTime));
-  }
-
-  if (canJump) {
-    playerVelocity.y = 150;
-  }
-  // }
-}
-
-_ammo().then((ammo) => {
-  globalThis.Ammo = ammo;
-  console.log("Ammo", new Ammo.btVector3(1, 2, 3).y() === 2);
-  init();
-  animate();
-});
-
-function updateControls() {
-  isFPS = !isFPS;
-  console.log(isFPS ? "FPS MODE" : "ORBIT MODE");
-  createControls();
-}
+init();
+render();
 
 function init() {
+  // renderer setup
+  setupRenderer();
+  // scene.fog = new THREE.Fog(bgColor, 20, 70);
+  setupCamera();
+
+  setupMisc();
+
+  setupGUI();
+
   setupCallbacks();
-  createRenderer();
-  createScene();
-  createCamera();
-  createControls();
 
-  createLights();
-
-  // GROUND
   createGround();
-
-  // console.log(physics);
-  // const g = physics.add.ground({ y: 10, width: 400, height: 400, name: 'ground-1' },{ lambert: { color: 'cornflowerblue' }})
-  // console.log('ground',g);
-
-  // Add Sky
   initSky();
 
-  function terrainChange() {
-    // clean up
-    if (terrain.model) {
-      console.log(terrain.model);
-      terrain.model.geometry.dispose();
-      terrain.model.material.dispose();
-      scene.children.forEach((child) =>
-        child.name == MAP_NAME ? scene.remove(child) : null
-      );
-    }
-    console.log(scene);
-    terrain.generateTerrain(scene, mainMesh, physics, worldOctree);
-  }
-  terrainChange();
+  setupLights();
 
-  gui.add(props, "water", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "sand", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "grass", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "rock", 0.0, 1.0, 0.01).onChange(terrainChange);
-  gui.add(props, "snow", 0.0, 1.0, 0.01).onChange(terrainChange);
+  setupTerrain();
 
-  //STATS
-  stats = new Stats();
-  stats.add;
-  canvas.appendChild(stats.dom);
-
-  window.addEventListener("resize", onWindowResize);
-}
-
-function setupCallbacks() {
-  const onKeyDown = function (event) {
-    switch (event.code) {
-      case "KeyC":
-        updateControls();
-        break;
-      case "ArrowUp":
-      case "KeyW":
-        moveForward = true;
-        break;
-
-      case "ArrowLeft":
-      case "KeyA":
-        moveLeft = true;
-        break;
-
-      case "ArrowDown":
-      case "KeyS":
-        moveBackward = true;
-        break;
-
-      case "ArrowRight":
-      case "KeyD":
-        moveRight = true;
-        break;
-
-      case "Space":
-        // if (canJump === true) velocity.y += 350;
-        canJump = true;
-        break;
-    }
-  };
-
-  const onKeyUp = function (event) {
-    switch (event.code) {
-      case "ArrowUp":
-      case "KeyW":
-        moveForward = false;
-        break;
-
-      case "ArrowLeft":
-      case "KeyA":
-        moveLeft = false;
-        break;
-
-      case "ArrowDown":
-      case "KeyS":
-        moveBackward = false;
-        break;
-
-      case "ArrowRight":
-      case "KeyD":
-        moveRight = false;
-        break;
-      case "Space":
-        canJump = false;
-        break;
-    }
-  };
-
-  document.addEventListener("keydown", onKeyDown);
-  document.addEventListener("keyup", onKeyUp);
+  setupPlayer();
 }
 
 function guiChanged() {
@@ -288,71 +116,40 @@ function initSky() {
   sky = new Sky();
   sky.scale.setScalar(10000);
   scene.add(sky);
+  clouds = new Clouds(50, scene);
 
   sun = new THREE.Vector3();
 
-  gui.add(params, "turbidity", 0.0, 20.0, 0.1).onChange(guiChanged);
-  gui.add(params, "rayleigh", 0.0, 4, 0.001).onChange(guiChanged);
-  gui.add(params, "mieCoefficient", 0.0, 0.1, 0.001).onChange(guiChanged);
-  gui.add(params, "mieDirectionalG", 0.0, 1, 0.001).onChange(guiChanged);
-  gui.add(params, "elevation", 0, 90, 0.1).onChange(guiChanged);
-  gui.add(params, "azimuth", -180, 180, 0.1).onChange(guiChanged);
+  const skyFolder = gui.addFolder("Sky");
+
+  skyFolder.add(params, "turbidity", 0.0, 20.0, 0.1).onChange(guiChanged);
+  skyFolder.add(params, "rayleigh", 0.0, 4, 0.001).onChange(guiChanged);
+  skyFolder.add(params, "mieCoefficient", 0.0, 0.1, 0.001).onChange(guiChanged);
+  skyFolder.add(params, "mieDirectionalG", 0.0, 1, 0.001).onChange(guiChanged);
+  skyFolder.add(params, "elevation", 0, 90, 0.1).onChange(guiChanged);
+  skyFolder.add(params, "azimuth", -180, 180, 0.1).onChange(guiChanged);
 
   guiChanged();
 }
 
-function createGround() {
-  const waterGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
+function setupRenderer() {
+  // const bgColor = 0x263238 / 2;
 
-  water = new Water(waterGeometry, {
-    textureWidth: 512,
-    textureHeight: 512,
-    waterNormals: new THREE.TextureLoader().load(
-      "/assets/images/waternormals.jpg",
-      function (texture) {
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      }
-    ),
-    sunDirection: new THREE.Vector3(),
-    sunColor: 0xffffff,
-    waterColor: 0x001e0f,
-    distortionScale: 8,
-    fog: scene.fog !== undefined,
-  });
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // renderer.setClearColor(bgColor, 1);
+  renderer.shadowMap.enabled = true;
+  // renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // renderer.gammaOutput = true;
+  document.body.appendChild(renderer.domElement);
 
-  water.rotation.x = -Math.PI / 2;
-  water.position.y = 17.5;
-  // gui.add(water.position, 'y', -10,50,1).name('water height');
-  water.receiveShadow = true;
-  water.material.uniforms.size.value = 10;
-  scene.add(water);
+  // scene setup
+  scene = new THREE.Scene();
+  pmremGenerator = new THREE.PMREMGenerator(renderer);
 }
 
-function createSky() {
-  const vertexShader = document.getElementById("vertexShader").textContent;
-  const fragmentShader = document.getElementById("fragmentShader").textContent;
-  const uniforms = {
-    topColor: { value: new THREE.Color(0x0077ff) },
-    bottomColor: { value: new THREE.Color(0xffffff) },
-    offset: { value: 33 },
-    exponent: { value: 0.6 },
-  };
-  uniforms["topColor"].value.copy(hemiLight.color);
-
-  // scene.fog.color.copy( uniforms[ "bottomColor" ].value );
-  const skyGeo = new THREE.SphereGeometry(4000, 32, 15);
-  const skyMat = new THREE.ShaderMaterial({
-    uniforms: uniforms,
-    vertexShader: vertexShader,
-    fragmentShader: fragmentShader,
-    side: THREE.BackSide,
-  });
-
-  sky = new THREE.Mesh(skyGeo, skyMat);
-  scene.add(sky);
-}
-
-function createLights() {
+function setupLights() {
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
   dirLight.color.setHSL(0.1, 1, 0.95);
   dirLight.position.set(0, 25, 0);
@@ -378,109 +175,439 @@ function createLights() {
   // scene.add( dirLightHelper );
 }
 
-function createControls() {
-  if (controls) {
-    controls.dispose();
-  }
-  if (isFPS) {
-    controls = new PointerLockControls(camera, document.body);
-    controls.lock();
-  } else {
-    controls = new OrbitControls(camera, canvas);
-    controls.maxPolarAngle = Math.PI * 0.495;
-    controls.minDistance = 40.0;
-    // controls.maxDistance = 2000.0;
-    controls.enableDamping = true;
-  }
-}
-
-function createCamera() {
-  /**
-   * Camera
-   */
-  // Base camera
-  let sWidth = window.innerWidth;
-  let sHeight = window.innerHeight;
-  let fov = 45;
-  let ratio = sWidth / sHeight;
-  let NEAR = 0.1;
-  let FAR = 10000;
-
-  camera = new THREE.PerspectiveCamera(fov, ratio, NEAR, FAR);
-  camera.position.set(10, 200, 0);
-  // camera.position.y = 10;
-  camera.lookAt(scene.position);
-  playerCollider.translate(camera.position);
-  scene.add(camera);
-}
-
-function createScene() {
-  scene = new THREE.Scene();
-  clouds = new Clouds(50, scene);
-  // physics
-  physics = new Physics();
-  physics.scene = scene;
-
-  // const box = physics.add.box({
-  //   width: 100,
-  //   height: 100,
-  //   depth: 100,
-  //   name: "box",
-  //   y: 550,
-  // });
-  // scene.add(box);
-  console.log(physics);
-  // physics.debug.enable();
-  // scene.fog = new THREE.Fog(scene.background, 500, 5000);
-}
-
-function createRenderer() {
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  // renderer.physicallyCorrectLights = true;
-  canvas.appendChild(renderer.domElement);
-  pmremGenerator = new THREE.PMREMGenerator(renderer);
-
-  gui = new dat.GUI();
-}
-
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+function setupCamera() {
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    50
+  );
+  camera.position.set(10, 10, -10);
+  camera.far = 10000;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  window.camera = camera;
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  render();
-  stats.update();
+function createGround() {
+  const waterGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
+
+  water = new Water(waterGeometry, {
+    textureWidth: 512,
+    textureHeight: 512,
+    waterNormals: new THREE.TextureLoader().load(
+      "/assets/images/waternormals.jpg",
+      function (texture) {
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      }
+    ),
+    sunDirection: new THREE.Vector3(),
+    sunColor: 0xffffff,
+    waterColor: 0x001e0f,
+    distortionScale: 8,
+    fog: scene.fog !== undefined,
+  });
+
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = -27;
+  water.receiveShadow = true;
+  water.material.uniforms.size.value = 10;
+  scene.add(water);
+  console.log(scene);
+}
+
+function setupMisc() {
+  clock = new THREE.Clock();
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.maxPolarAngle = Math.PI * 0.495;
+  controls.minDistance = 40.0;
+  // controls.maxDistance = 10000.0;
+  controls.enableDamping = true;
+  // stats setup
+  stats = new Stats();
+  document.body.appendChild(stats.dom);
+}
+
+function setupPlayer() {
+  player = new THREE.Mesh(
+    new RoundedBoxGeometry(1.0, 2.0, 1.0, 10, 0.5),
+    new THREE.MeshStandardMaterial()
+  );
+  player.geometry.translate(0, -0.5, 0);
+  player.capsuleInfo = {
+    radius: 0.5,
+    segment: new THREE.Line3(
+      new THREE.Vector3(),
+      new THREE.Vector3(0, -1.0, 0.0)
+    ),
+  };
+  player.castShadow = true;
+  player.receiveShadow = true;
+  player.material.shadowSide = 2;
+  scene.add(player);
+  reset();
+}
+
+function setupGUI() {
+  gui = new GUI();
+  gui.add(params, "firstPerson").onChange((v) => {
+    if (!v) {
+      camera.position
+        .sub(controls.target)
+        .normalize()
+        .multiplyScalar(10)
+        .add(controls.target);
+    }
+  });
+
+  const visFolder = gui.addFolder("Visualization");
+  visFolder.add(params, "displayCollider");
+  visFolder.add(params, "displayBVH");
+  visFolder.add(params, "visualizeDepth", 1, 20, 1).onChange((v) => {
+    visualizer.depth = v;
+    visualizer.update();
+  });
+  visFolder.open();
+
+  const physicsFolder = gui.addFolder("Player");
+  physicsFolder.add(params, "physicsSteps", 0, 30, 1);
+  physicsFolder.add(params, "gravity", -100, 100, 0.01).onChange((v) => {
+    params.gravity = parseFloat(v);
+  });
+  physicsFolder.add(params, "playerSpeed", 1, 20);
+  physicsFolder.open();
+
+  gui.add(params, "reset");
+  gui.open();
+}
+
+function setupCallbacks() {
+  window.addEventListener(
+    "resize",
+    function () {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    },
+    false
+  );
+
+  window.addEventListener("keydown", function (e) {
+    switch (e.code) {
+      case "KeyW":
+      case "ArrowUp":
+        fwdPressed = true;
+        break;
+      case "KeyS":
+      case "ArrowDown":
+        bkdPressed = true;
+        break;
+      case "KeyD":
+      case "ArrowRight":
+        rgtPressed = true;
+        break;
+      case "KeyA":
+      case "ArrowLeft":
+        lftPressed = true;
+        break;
+      case "Space":
+        if (playerIsOnGround) {
+          playerVelocity.y = 10.0;
+        }
+        break;
+    }
+  });
+
+  window.addEventListener("keyup", function (e) {
+    switch (e.code) {
+      case "KeyW":
+      case "ArrowUp":
+        fwdPressed = false;
+        break;
+      case "KeyS":
+      case "ArrowDown":
+        bkdPressed = false;
+        break;
+      case "KeyD":
+      case "ArrowRight":
+        rgtPressed = false;
+        break;
+      case "KeyA":
+      case "ArrowLeft":
+        lftPressed = false;
+        break;
+    }
+  });
+}
+
+function setupTerrain() {
+  new GLTFLoader().load("assets/images/high.glb", (res) => loadThing(res));
+}
+
+function loadThing(res) {
+  const gltfScene = res.scene;
+  gltfScene.scale.setScalar(1000);
+
+  const box = new THREE.Box3();
+  box.setFromObject(gltfScene);
+  box.getCenter(gltfScene.position).negate();
+  gltfScene.updateMatrixWorld(true);
+
+  // visual geometry setup
+  const toMerge = {};
+  gltfScene.traverse((o) => {
+    if (o.isMesh) {
+      o.geometry = o.geometry.toNonIndexed();
+      let geo = o.geometry;
+      let faces = geo.attributes.position.count;
+
+      let colorBuffer = new THREE.BufferAttribute(
+        new Float32Array(faces * 3),
+        3
+      );
+      geo.setAttribute("color", colorBuffer);
+
+      const cols = geo.attributes.color;
+      const positions = geo.attributes.position;
+
+      for (let i = 0; i < cols.count; i += 3) {
+        // get vertex of this triangle.
+        let a = positions.getY(i);
+        let b = positions.getY(i + 1);
+        let c = positions.getY(i + 2);
+
+        //assign colors based on the highest point of the face
+        let max = Math.max(a, Math.max(b, c));
+        // map value between 0-1.
+        max = map(max, 0, 0.0493, 0, 1);
+
+        let val = simplex.noise3D(a, b, c);
+        val = map(val, -1, 1, 0, 1);
+        setCol(cols, i, val, val, val); // blue
+        if (max <= p.water) setCol(cols, i, 0.0, 0.3, 1.0);
+        // blue
+        else if (max <= p.sand) setCol(cols, i, 1.0, 0.8, 0.3);
+        // yellow
+        else if (max <= p.grass) setCol(cols, i, 0.44, 0.7, 0.18);
+        // green
+        else if (max <= p.rock) setCol(cols, i, 0.3, 0.3, 0.3);
+        // brown
+        else setCol(cols, i, 0.92, 0.98, 0.98); // snow
+      }
+
+      o.geometry.computeFaceNormals();
+      o.geometry.computeVertexNormals();
+
+      const hex = o.material.color.getHex();
+      toMerge[hex] = toMerge[hex] || [];
+      toMerge[hex].push(o);
+    }
+  });
+
+  environment = new THREE.Group();
+  for (const hex in toMerge) {
+    const arr = toMerge[hex];
+    const visualGeometries = [];
+    arr.forEach((mesh) => {
+      const geom = mesh.geometry.clone();
+      geom.applyMatrix4(mesh.matrixWorld);
+      visualGeometries.push(geom);
+    });
+
+    if (visualGeometries.length) {
+      const newGeom =
+        BufferGeometryUtils.mergeBufferGeometries(visualGeometries);
+      const newMesh = new THREE.Mesh(
+        newGeom,
+        new THREE.MeshStandardMaterial({
+          // wireframe: true,
+          vertexColors: THREE.VertexColors,
+          // required for flat shading
+          flatShading: true,
+        })
+      );
+      newMesh.castShadow = true;
+      newMesh.receiveShadow = true;
+      // newMesh.material.shadowSide = 2;
+      environment.add(newMesh);
+    }
+  }
+
+  // collect all geometries to merge
+  const geometries = [];
+  environment.updateMatrixWorld(true);
+  environment.traverse((c) => {
+    if (c.geometry) {
+      const cloned = c.geometry.clone();
+      cloned.applyMatrix4(c.matrixWorld);
+      for (const key in cloned.attributes) {
+        if (key !== "position") {
+          cloned.deleteAttribute(key);
+        }
+      }
+      geometries.push(cloned);
+    }
+  });
+
+  // create the merged geometry
+  const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
+    geometries,
+    false
+  );
+  mergedGeometry.boundsTree = new MeshBVH(mergedGeometry, {
+    lazyGeneration: false,
+  });
+
+  collider = new THREE.Mesh(mergedGeometry);
+  console.log(collider.geometry.boundsTree);
+  collider.material.wireframe = true;
+  collider.material.opacity = 0.5;
+  collider.material.transparent = true;
+
+  visualizer = new MeshBVHVisualizer(collider, params.visualizeDepth);
+  scene.add(visualizer);
+  scene.add(collider);
+  scene.add(environment);
+}
+
+function reset() {
+  playerVelocity.set(0, 0, 0);
+  player.position.set(15.75, -3, 30);
+  camera.position.sub(controls.target);
+  controls.target.copy(player.position);
+  camera.position.add(player.position);
+  controls.update();
+}
+
+function updatePlayer(delta) {
+  window.playerVelocity = playerVelocity;
+
+  playerVelocity.y += delta * params.gravity;
+  player.position.addScaledVector(playerVelocity, delta);
+
+  // move the player
+  const angle = controls.getAzimuthalAngle();
+  if (fwdPressed) {
+    tempVector.set(0, 0, -1).applyAxisAngle(upVector, angle);
+    player.position.addScaledVector(tempVector, params.playerSpeed * delta);
+  }
+
+  if (bkdPressed) {
+    tempVector.set(0, 0, 1).applyAxisAngle(upVector, angle);
+    player.position.addScaledVector(tempVector, params.playerSpeed * delta);
+  }
+
+  if (lftPressed) {
+    tempVector.set(-1, 0, 0).applyAxisAngle(upVector, angle);
+    player.position.addScaledVector(tempVector, params.playerSpeed * delta);
+  }
+
+  if (rgtPressed) {
+    tempVector.set(1, 0, 0).applyAxisAngle(upVector, angle);
+    player.position.addScaledVector(tempVector, params.playerSpeed * delta);
+  }
+
+  player.updateMatrixWorld();
+
+  // adjust player position based on collisions
+  const capsuleInfo = player.capsuleInfo;
+  tempBox.makeEmpty();
+  tempMat.copy(collider.matrixWorld).invert();
+  tempSegment.copy(capsuleInfo.segment);
+
+  tempSegment.start.applyMatrix4(player.matrixWorld).applyMatrix4(tempMat);
+  tempSegment.end.applyMatrix4(player.matrixWorld).applyMatrix4(tempMat);
+
+  tempBox.expandByPoint(tempSegment.start);
+  tempBox.expandByPoint(tempSegment.end);
+
+  tempBox.min.addScalar(-capsuleInfo.radius);
+  tempBox.max.addScalar(capsuleInfo.radius);
+  collider.geometry.boundsTree.shapecast(
+    collider,
+    (box) => box.intersectsBox(tempBox),
+    (tri) => {
+      const triPoint = tempVector;
+      const capsulePoint = tempVector2;
+
+      const distance = tri.closestPointToSegment(
+        tempSegment,
+        triPoint,
+        capsulePoint
+      );
+      if (distance < capsuleInfo.radius) {
+        const depth = capsuleInfo.radius - distance;
+        const direction = capsulePoint.sub(triPoint).normalize();
+
+        tempSegment.start.addScaledVector(direction, depth);
+        tempSegment.end.addScaledVector(direction, depth);
+      }
+    }
+  );
+
+  const newPosition = tempVector;
+  newPosition.copy(tempSegment.start).applyMatrix4(collider.matrixWorld);
+
+  const deltaVector = tempVector2;
+  deltaVector.subVectors(newPosition, player.position);
+
+  player.position.copy(newPosition);
+
+  playerIsOnGround = deltaVector.y > Math.abs(delta * playerVelocity.y * 0.25);
+
+  if (!playerIsOnGround) {
+    deltaVector.normalize();
+    playerVelocity.addScaledVector(
+      deltaVector,
+      -deltaVector.dot(playerVelocity)
+    );
+  } else {
+    playerVelocity.set(0, 0, 0);
+  }
+
+  // adjust the camera
+  camera.position.sub(controls.target);
+  controls.target.copy(player.position);
+  camera.position.add(player.position);
+
+  if (player.position.y < -100) {
+    reset();
+  }
 }
 
 function render() {
-  const time = performance.now();
+  stats.update();
+  requestAnimationFrame(render);
 
-  if (isFPS) {
-    const deltaTime = Math.min(0.1, clock.getDelta());
-
-    controlsFn(deltaTime);
-    updatePlayer(deltaTime);
-    relHeightContainer.innerHTML = `y: ${playerVelocity.y.toFixed(2)}`;
+  const delta = Math.min(clock.getDelta(), 0.1);
+  if (params.firstPerson) {
+    controls.maxPolarAngle = Math.PI;
+    controls.minDistance = 1e-4;
+    controls.maxDistance = 1e-4;
+  } else {
+    controls.maxPolarAngle = Math.PI / 2;
+    controls.minDistance = 1;
+    controls.maxDistance = 20;
   }
+
+  if (collider) {
+    collider.visible = params.displayCollider;
+    visualizer.visible = params.displayBVH;
+
+    const physicsSteps = params.physicsSteps;
+
+    for (let i = 0; i < physicsSteps; i++) {
+      updatePlayer(delta / physicsSteps);
+    }
+  }
+
+  // TODO: limit the camera movement based on the collider
+  // raycast in direction of camera and move it if it's further than the closest point
+
+  controls.update();
 
   if (water) {
     water.material.uniforms["time"].value += 1.0 / 60.0;
   }
-
-  // cloudUniforms.iResolution.value.set(512, 512, 1);
-  // cloudUniforms.iTime.value = time / 3600;
-
-  // params.azimuth += (10.0 / 60.0)%180;
-  // console.log(sky.material.uniforms);
-  // guiChanged();
-  // physics.update(time * 1000);
-  prevTime = time;
 
   renderer.render(scene, camera);
 }
