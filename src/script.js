@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import Stats from "stats.js";
@@ -23,6 +24,13 @@ THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 const SimplexNoise = require("simplex-noise");
 const simplex = new SimplexNoise("myseed");
+const info = document.getElementById("info");
+
+const STATE = {
+  chill: "CHILL",
+  walk: "WALK",
+  run: "RUN",
+};
 
 export const p = {
   water: 0.0,
@@ -30,6 +38,14 @@ export const p = {
   grass: 0.3,
   rock: 0.5,
   snow: 0.7,
+};
+
+const capsuleInfo = {
+  radius: 0.5,
+  segment: new THREE.Line3(
+    new THREE.Vector3(),
+    new THREE.Vector3(0, -1.0, 0.0)
+  ),
 };
 
 const params = {
@@ -55,12 +71,16 @@ let camera, scene, renderer, gui, controls, stats, clock, pmremGenerator;
 let water, sun, sky, clouds, hemiLight;
 let environment, collider, visualizer, player;
 
+let mixer;
+let animations = [];
+let state = STATE.chill;
 let playerIsOnGround = false;
 let fwdPressed = false,
   bkdPressed = false,
   lftPressed = false,
   rgtPressed = false;
 let playerVelocity = new THREE.Vector3();
+let playerDirection = new THREE.Vector3(0, 1, 0);
 let upVector = new THREE.Vector3(0, 1, 0);
 let tempVector = new THREE.Vector3();
 let tempVector2 = new THREE.Vector3();
@@ -228,23 +248,38 @@ function setupMisc() {
 }
 
 function setupPlayer() {
-  player = new THREE.Mesh(
-    new RoundedBoxGeometry(1.0, 2.0, 1.0, 10, 0.5),
-    new THREE.MeshStandardMaterial()
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath("three/examples/js/libs/draco/gltf/");
+
+  const loader = new GLTFLoader();
+  loader.setDRACOLoader(dracoLoader);
+  loader.load(
+    "assets/images/Fox.glb",
+    function (gltf) {
+      console.log(gltf);
+      const model = gltf.scene.children[0];
+      // model.position.set(0, -10, 0);
+      model.scale.set(0.05, 0.05, 0.05);
+      // scene.add(model);
+      player = model;
+      player.castShadow = true;
+      player.receiveShadow = true;
+      // player.material.shadowSide = 2;
+      scene.add(player);
+      console.log("player", player);
+
+      reset();
+
+      animations = gltf.animations;
+      console.log(animations);
+      mixer = new THREE.AnimationMixer(model);
+      mixer.clipAction(animations[0]).play();
+    },
+    undefined,
+    function (e) {
+      console.error(e);
+    }
   );
-  player.geometry.translate(0, -0.5, 0);
-  player.capsuleInfo = {
-    radius: 0.5,
-    segment: new THREE.Line3(
-      new THREE.Vector3(),
-      new THREE.Vector3(0, -1.0, 0.0)
-    ),
-  };
-  player.castShadow = true;
-  player.receiveShadow = true;
-  player.material.shadowSide = 2;
-  scene.add(player);
-  reset();
 }
 
 function setupGUI() {
@@ -293,13 +328,25 @@ function setupCallbacks() {
 
   window.addEventListener("keydown", function (e) {
     switch (e.code) {
+      case "KeyC":
+        params.firstPerson = !params.firstPerson;
+        if (!params.firstPerson) {
+          camera.position
+            .sub(controls.target)
+            .normalize()
+            .multiplyScalar(10)
+            .add(controls.target);
+        }
+        break;
       case "KeyW":
       case "ArrowUp":
         fwdPressed = true;
+        doWalk();
         break;
       case "KeyS":
       case "ArrowDown":
         bkdPressed = true;
+        doWalk();
         break;
       case "KeyD":
       case "ArrowRight":
@@ -311,7 +358,7 @@ function setupCallbacks() {
         break;
       case "Space":
         if (playerIsOnGround) {
-          playerVelocity.y = 10.0;
+          playerVelocity.y = 50.0;
         }
         break;
     }
@@ -322,10 +369,12 @@ function setupCallbacks() {
       case "KeyW":
       case "ArrowUp":
         fwdPressed = false;
+        doChill();
         break;
       case "KeyS":
       case "ArrowDown":
         bkdPressed = false;
+        doChill();
         break;
       case "KeyD":
       case "ArrowRight":
@@ -479,6 +528,8 @@ function reset() {
 }
 
 function updatePlayer(delta) {
+  // console.log("g");
+  if (!player) return;
   window.playerVelocity = playerVelocity;
 
   playerVelocity.y += delta * params.gravity;
@@ -486,6 +537,8 @@ function updatePlayer(delta) {
 
   // move the player
   const angle = controls.getAzimuthalAngle();
+  player.quaternion.setFromAxisAngle(playerDirection, angle + Math.PI);
+
   if (fwdPressed) {
     tempVector.set(0, 0, -1).applyAxisAngle(upVector, angle);
     player.position.addScaledVector(tempVector, params.playerSpeed * delta);
@@ -509,7 +562,8 @@ function updatePlayer(delta) {
   player.updateMatrixWorld();
 
   // adjust player position based on collisions
-  const capsuleInfo = player.capsuleInfo;
+  // const capsuleInfo = player.capsuleInfo;
+
   tempBox.makeEmpty();
   tempMat.copy(collider.matrixWorld).invert();
   tempSegment.copy(capsuleInfo.segment);
@@ -537,7 +591,7 @@ function updatePlayer(delta) {
       if (distance < capsuleInfo.radius) {
         const depth = capsuleInfo.radius - distance;
         const direction = capsulePoint.sub(triPoint).normalize();
-
+        // info.innerHTML = `x: ${triPoint.x.toFixed(2)} y: ${triPoint.y.toFixed(2)} z: ${triPoint.z.toFixed(2)}`
         tempSegment.start.addScaledVector(direction, depth);
         tempSegment.end.addScaledVector(direction, depth);
       }
@@ -548,8 +602,8 @@ function updatePlayer(delta) {
   newPosition.copy(tempSegment.start).applyMatrix4(collider.matrixWorld);
 
   const deltaVector = tempVector2;
-  deltaVector.subVectors(newPosition, player.position);
 
+  deltaVector.subVectors(newPosition, player.position);
   player.position.copy(newPosition);
 
   playerIsOnGround = deltaVector.y > Math.abs(delta * playerVelocity.y * 0.25);
@@ -574,11 +628,35 @@ function updatePlayer(delta) {
   }
 }
 
+function doWalk() {
+  if (state === STATE.walk) return;
+  mixer.stopAllAction();
+  mixer.clipAction(animations[1]).play();
+  state = STATE.walk;
+}
+
+function doChill() {
+  if (state === STATE.chill) return;
+  mixer.stopAllAction();
+  mixer.clipAction(animations[0]).play();
+  state = STATE.chill;
+}
+
+function doRun() {
+  if (state === STATE.run) return;
+  mixer.stopAllAction();
+  mixer.clipAction(animations[2]).play();
+  state = STATE.run;
+}
+
 function render() {
   stats.update();
   requestAnimationFrame(render);
 
   const delta = Math.min(clock.getDelta(), 0.1);
+  if (mixer) {
+    mixer.update(delta);
+  }
   if (params.firstPerson) {
     controls.maxPolarAngle = Math.PI;
     controls.minDistance = 1e-4;
@@ -586,7 +664,7 @@ function render() {
   } else {
     controls.maxPolarAngle = Math.PI / 2;
     controls.minDistance = 1;
-    controls.maxDistance = 20;
+    controls.maxDistance = 2000;
   }
 
   if (collider) {
