@@ -12,12 +12,26 @@ import {
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 const WORLD_SIZE = 2000;
 
-class Clouds {
-  constructor(numClouds, scene) {
-    this.numClouds = numClouds;
+const params = {
+  x: 0,
+  y: 0,
+  z: 0,
+};
+
+class Trees {
+  constructor(posArray, scene, gui) {
+    this.num = posArray.length;
+    this.posArray = posArray;
     this.mesh = null;
-    this.clouds = [];
-    this.name = "CLOUD";
+    this.trees = [];
+    this.gui = gui;
+    this.name = "TREES";
+    this.scene = scene;
+    this.gui.add(params, "x", -100, 100.0, 0.1).onChange(() => {
+      this.update();
+    });
+    this.gui.add(params, "y", -100, 100.0, 0.1).onChange(() => this.update());
+    this.gui.add(params, "z", -100, 100.0, 0.1).onChange(() => this.update());
     this.initMesh(scene);
   }
 
@@ -33,54 +47,56 @@ class Clouds {
       (error) => console.error(error)
     );
   }
+  update() {
+    this.mesh.position.x =  params.x;
+    this.mesh.position.y =  params.y;
+    this.mesh.position.z =  params.z;
+  }
 
   loadGeometry(geo, scene) {
-    let m = new MeshStandardMaterial({ color: "white", flatShading: true });
-
+    let m = new MeshStandardMaterial({ color: "blue", flatShading: true });
     geo.computeVertexNormals();
-    console.time("(build)");
+    console.time("(build trees)");
 
     const matrix = new Matrix4();
-    const mesh = new InstancedMesh(geo, m, this.numClouds);
+    const mesh = new InstancedMesh(geo, m, this.num);
 
-    for (let i = 0; i < this.numClouds; i++) {
-      this.randomizeMatrix(matrix);
+    for (let i = 0; i < this.num; i++) {
+      this.randomizeMatrix(this.posArray[i], matrix);
       mesh.setMatrixAt(i, matrix);
       mesh.name = this.name;
       mesh.receiveShadow = true;
       mesh.castShadow = true;
     }
+
+    // mesh.position.x = mesh.position.x+ params.x;
+    // mesh.position.y = mesh.position.y+ params.y;
+    // mesh.position.z = mesh.position.z+ params.z;
+
     scene.add(mesh);
+    console.log(scene);
+
     this.mesh = mesh;
     // const geometryByteLength = this.getGeometryByteLength(geo);
-    console.timeEnd("(build)");
+    console.timeEnd("(build trees)");
   }
 
-  randomizeMatrix(matrix) {
-    const position = new Vector3();
+  randomizeMatrix(pos, matrix) {
     const rotation = new Euler();
     const quaternion = new Quaternion();
     const scale = new Vector3();
-
-    position.x = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
-    position.y = Math.random() * 500 + 150;
-    position.z = Math.random() * WORLD_SIZE - WORLD_SIZE / 2;
-    // position.x = 0;
-    // position.y = 300;
-    // position.z = 0;
 
     rotation.x = Math.PI / 2;
     // rotation.y = Math.random() * 2 * Math.PI;
     // rotation.z = Math.random() * 2 * Math.PI;
 
     quaternion.setFromEuler(rotation);
-
-    scale.x = Math.random() * 10 + 10;
-    scale.y = Math.random() * 10 + 10;
-    scale.z = Math.random() * 10 + 10;
-    // scale.x = scale.y = scale.z = Math.random() * 0.02;
-
-    matrix.compose(position, quaternion, scale);
+    pos.multiplyScalar(1000);
+    pos.x += -50;
+    pos.y -= 20;
+    pos.z += -24;
+    scale.x = scale.y = scale.z = 1;
+    matrix.compose(pos, quaternion, scale);
   }
 
   getGeometryByteLength(geo) {
@@ -91,7 +107,7 @@ class Clouds {
     }
     return total;
   }
-  
+
   /**
    * Remove all clouds from scene and dispose their geometries
    * @param {*} scene The renderer scene object
@@ -100,7 +116,7 @@ class Clouds {
     let meshes = [];
 
     scene.traverse(function (object) {
-      if (object.isMesh) meshes.push(object);
+      meshes.push(object);
     });
 
     for (let i = 0; i < meshes.length; i++) {
@@ -114,4 +130,4 @@ class Clouds {
   }
 }
 
-export { Clouds };
+export { Trees };

@@ -17,6 +17,7 @@ import {
   MeshBVH,
   MeshBVHVisualizer,
 } from "three-mesh-bvh";
+import { Trees } from "./Trees";
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -70,6 +71,8 @@ const params = {
 let camera, scene, renderer, gui, controls, stats, clock, pmremGenerator;
 let water, sun, sky, clouds, hemiLight;
 let environment, collider, visualizer, player;
+
+let places = [];
 
 let mixer;
 let animations = [];
@@ -136,8 +139,7 @@ function initSky() {
   sky = new Sky();
   sky.scale.setScalar(10000);
   scene.add(sky);
-  clouds = new Clouds(50, scene);
-
+  clouds = new Clouds(100, scene);
   sun = new THREE.Vector3();
 
   const skyFolder = gui.addFolder("Sky");
@@ -232,7 +234,6 @@ function createGround() {
   water.receiveShadow = true;
   water.material.uniforms.size.value = 10;
   scene.add(water);
-  console.log(scene);
 }
 
 function setupMisc() {
@@ -256,7 +257,6 @@ function setupPlayer() {
   loader.load(
     "assets/images/Fox.glb",
     function (gltf) {
-      console.log(gltf);
       const model = gltf.scene.children[0];
       // model.position.set(0, -10, 0);
       model.scale.set(0.05, 0.05, 0.05);
@@ -271,7 +271,6 @@ function setupPlayer() {
       reset();
 
       animations = gltf.animations;
-      console.log(animations);
       mixer = new THREE.AnimationMixer(model);
       mixer.clipAction(animations[0]).play();
     },
@@ -414,29 +413,42 @@ function loadThing(res) {
         3
       );
       geo.setAttribute("color", colorBuffer);
-
       const cols = geo.attributes.color;
       const positions = geo.attributes.position;
+      console.log(positions);
+      let val = Math.random();
 
       for (let i = 0; i < cols.count; i += 3) {
         // get vertex of this triangle.
         let a = positions.getY(i);
         let b = positions.getY(i + 1);
         let c = positions.getY(i + 2);
+        let placeV = new THREE.Vector3(
+          positions.getX(i),
+          positions.getY(i),
+          positions.getZ(i)
+        );
 
         //assign colors based on the highest point of the face
         let max = Math.max(a, Math.max(b, c));
         // map value between 0-1.
         max = map(max, 0, 0.0493, 0, 1);
-
-        let val = simplex.noise3D(a, b, c);
-        val = map(val, -1, 1, 0, 1);
-        setCol(cols, i, val, val, val); // blue
+        val = Math.random();
+        // val = map(val, -1, 1, 0, 1);
+        // setCol(cols, i, val, val, val);
+        // blue
         if (max <= p.water) setCol(cols, i, 0.0, 0.3, 1.0);
         // blue
         else if (max <= p.sand) setCol(cols, i, 1.0, 0.8, 0.3);
         // yellow
-        else if (max <= p.grass) setCol(cols, i, 0.44, 0.7, 0.18);
+        else if (max <= p.grass) {
+          if (places.length <50 && val>0.999) {
+            places.push(placeV);
+            setCol(cols, i, 0, 0, 0);
+          }else{
+            setCol(cols, i, 0.44, 0.7, 0.18);
+          }
+        }
         // green
         else if (max <= p.rock) setCol(cols, i, 0.3, 0.3, 0.3);
         // brown
@@ -507,7 +519,6 @@ function loadThing(res) {
   });
 
   collider = new THREE.Mesh(mergedGeometry);
-  console.log(collider.geometry.boundsTree);
   collider.material.wireframe = true;
   collider.material.opacity = 0.5;
   collider.material.transparent = true;
@@ -516,6 +527,8 @@ function loadThing(res) {
   scene.add(visualizer);
   scene.add(collider);
   scene.add(environment);
+
+  new Trees(places, scene,gui);
 }
 
 function reset() {
@@ -528,7 +541,6 @@ function reset() {
 }
 
 function updatePlayer(delta) {
-  // console.log("g");
   if (!player) return;
   window.playerVelocity = playerVelocity;
 
@@ -685,6 +697,10 @@ function render() {
 
   if (water) {
     water.material.uniforms["time"].value += 1.0 / 60.0;
+  }
+
+  if (clouds.mesh) {
+    clouds.mesh.position.x += Math.sin(delta * 10);
   }
 
   renderer.render(scene, camera);
