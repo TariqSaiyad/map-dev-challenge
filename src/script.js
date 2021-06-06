@@ -139,7 +139,7 @@ function initSky() {
   sky = new Sky();
   sky.scale.setScalar(10000);
   scene.add(sky);
-  clouds = new Clouds(100, scene);
+  clouds = new Clouds(50, scene);
   sun = new THREE.Vector3();
 
   const skyFolder = gui.addFolder("Sky");
@@ -442,12 +442,10 @@ function loadThing(res) {
         else if (max <= p.sand) setCol(cols, i, 1.0, 0.8, 0.3);
         // yellow
         else if (max <= p.grass) {
-          if (places.length <50 && val>0.999) {
+          if (places.length < 70 && val > 0.995) {
             places.push(placeV);
-            setCol(cols, i, 0, 0, 0);
-          }else{
-            setCol(cols, i, 0.44, 0.7, 0.18);
           }
+          setCol(cols, i, 0.44, 0.7, 0.18);
         }
         // green
         else if (max <= p.rock) setCol(cols, i, 0.3, 0.3, 0.3);
@@ -528,7 +526,7 @@ function loadThing(res) {
   scene.add(collider);
   scene.add(environment);
 
-  new Trees(places, scene,gui);
+  new Trees(places, scene, gui);
 }
 
 function reset() {
