@@ -28,9 +28,9 @@ class Trees {
     this.name = "TREES";
     this.scene = scene;
 
-    this.gui.add(params, "x", -100, 100.0, 0.1).onChange(() => this.update());
-    this.gui.add(params, "y", -100, 100.0, 0.1).onChange(() => this.update());
-    this.gui.add(params, "z", -100, 100.0, 0.1).onChange(() => this.update());
+    // this.gui.add(params, "x", -100, 100.0, 0.1).onChange(() => this.update());
+    // this.gui.add(params, "y", -100, 100.0, 0.1).onChange(() => this.update());
+    // this.gui.add(params, "z", -100, 100.0, 0.1).onChange(() => this.update());
 
     this.initMesh(scene);
   }

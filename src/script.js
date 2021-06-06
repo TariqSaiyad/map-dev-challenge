@@ -55,8 +55,8 @@ const params = {
   displayCollider: false,
   displayBVH: false,
   visualizeDepth: 10,
-  gravity: -30,
-  playerSpeed: 10,
+  gravity: -15,
+  playerSpeed: 25,
   physicsSteps: 5,
 
   reset: reset,
@@ -97,7 +97,6 @@ render();
 function init() {
   // renderer setup
   setupRenderer();
-  // scene.fog = new THREE.Fog(bgColor, 20, 70);
   setupCamera();
 
   setupMisc();
@@ -139,7 +138,7 @@ function initSky() {
   sky = new Sky();
   sky.scale.setScalar(10000);
   scene.add(sky);
-  clouds = new Clouds(50, scene);
+  clouds = new Clouds(30, scene);
   sun = new THREE.Vector3();
 
   const skyFolder = gui.addFolder("Sky");
@@ -204,7 +203,7 @@ function setupCamera() {
     0.1,
     50
   );
-  camera.position.set(10, 10, -10);
+  camera.position.set(-31, -1468, -873);
   camera.far = 10000;
   camera.updateProjectionMatrix();
   window.camera = camera;
@@ -283,16 +282,6 @@ function setupPlayer() {
 
 function setupGUI() {
   gui = new GUI();
-  gui.add(params, "firstPerson").onChange((v) => {
-    if (!v) {
-      camera.position
-        .sub(controls.target)
-        .normalize()
-        .multiplyScalar(10)
-        .add(controls.target);
-    }
-  });
-
   const visFolder = gui.addFolder("Visualization");
   visFolder.add(params, "displayCollider");
   visFolder.add(params, "displayBVH");
@@ -300,10 +289,10 @@ function setupGUI() {
     visualizer.depth = v;
     visualizer.update();
   });
-  visFolder.open();
+  // visFolder.open();
 
   const physicsFolder = gui.addFolder("Player");
-  physicsFolder.add(params, "physicsSteps", 0, 30, 1);
+  // physicsFolder.add(params, "physicsSteps", 0, 30, 1);
   physicsFolder.add(params, "gravity", -100, 100, 0.01).onChange((v) => {
     params.gravity = parseFloat(v);
   });
@@ -329,6 +318,8 @@ function setupCallbacks() {
     switch (e.code) {
       case "KeyC":
         params.firstPerson = !params.firstPerson;
+        player.visible = !player.visible;
+
         if (!params.firstPerson) {
           camera.position
             .sub(controls.target)
@@ -700,6 +691,10 @@ function render() {
   if (clouds.mesh) {
     clouds.mesh.position.x += Math.sin(delta * 10);
   }
+
+  // info.innerHTML = `x: ${camera.position.x.toFixed(2)} y: ${camera.position.y.toFixed(
+  //   2
+  // )} z: ${camera.position.z.toFixed(2)}`;
 
   renderer.render(scene, camera);
 }
