@@ -272,7 +272,7 @@ function setupCamera() {
 }
 
 function createGround() {
-  const waterGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
+  const waterGeometry = new THREE.PlaneBufferGeometry(5000, 5000);
 
   water = new Water(waterGeometry, {
     textureWidth: 512,
