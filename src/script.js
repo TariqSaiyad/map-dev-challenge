@@ -67,9 +67,19 @@ const params = {
   mieDirectionalG: 0.8,
   elevation: 12,
   azimuth: 90,
+
+  enableWater: true,
+  enableSky: true,
+  enableLights: true,
+  enableClouds: true,
+  enableWireframe: false,
+  // enableTexture: true,
+  cameraX: 0,
+  cameraY: 100,
+  cameraZ: 0,
 };
 let camera, scene, renderer, gui, controls, stats, clock, pmremGenerator;
-let water, sun, sky, clouds, hemiLight;
+let water, sun, sky, clouds, dirLight;
 let environment, collider, visualizer, player;
 
 let places = [];
@@ -106,6 +116,7 @@ function init() {
   setupCallbacks();
 
   createGround();
+
   initSky();
 
   setupLights();
@@ -141,7 +152,30 @@ function initSky() {
   clouds = new Clouds(30, scene);
   sun = new THREE.Vector3();
 
-  const skyFolder = gui.addFolder("Sky");
+  const skyFolder = gui.addFolder("Environment");
+
+  skyFolder
+    .add(params, "enableWater")
+    .onChange((v) => (water.visible = !water.visible));
+
+  skyFolder
+    .add(params, "enableSky")
+    .onChange((v) => (sky.visible = !sky.visible));
+  skyFolder
+    .add(params, "enableLights")
+    .onChange((v) => (dirLight.visible = !dirLight.visible));
+
+  skyFolder
+    .add(params, "enableClouds")
+    .onChange((v) => (clouds.mesh.visible = !clouds.mesh.visible));
+
+  skyFolder
+    .add(params, "enableWireframe")
+    .onChange(
+      (v) =>
+        (environment.children[0].material.wireframe =
+          !environment.children[0].material.wireframe)
+    );
 
   skyFolder.add(params, "turbidity", 0.0, 20.0, 0.1).onChange(guiChanged);
   skyFolder.add(params, "rayleigh", 0.0, 4, 0.001).onChange(guiChanged);
@@ -150,7 +184,18 @@ function initSky() {
   skyFolder.add(params, "elevation", 0, 90, 0.1).onChange(guiChanged);
   skyFolder.add(params, "azimuth", -180, 180, 0.1).onChange(guiChanged);
 
+  const cameraFolder = gui.addFolder("Camera");
+  cameraFolder.add(params, "cameraX", 0.0, 5000, 1).onChange(cameraChanged);
+  cameraFolder.add(params, "cameraY", 0.0, 5000, 1).onChange(cameraChanged);
+  cameraFolder.add(params, "cameraZ", 0.0, 5000, 1).onChange(cameraChanged);
+
   guiChanged();
+}
+
+function cameraChanged() {
+  camera.position.x = params.cameraX;
+  camera.position.y = params.cameraY;
+  camera.position.z = params.cameraZ;
 }
 
 function setupRenderer() {
@@ -171,7 +216,7 @@ function setupRenderer() {
 }
 
 function setupLights() {
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
   dirLight.color.setHSL(0.1, 1, 0.95);
   dirLight.position.set(0, 25, 0);
   dirLight.position.multiplyScalar(30);
@@ -207,6 +252,23 @@ function setupCamera() {
   camera.far = 10000;
   camera.updateProjectionMatrix();
   window.camera = camera;
+
+  // create an AudioListener and add it to the camera
+  const listener = new THREE.AudioListener();
+  listener.context.resume();
+  camera.add(listener);
+
+  // create a global audio source
+  const sound = new THREE.Audio(listener);
+
+  // load a sound and set it as the Audio object's buffer
+  const audioLoader = new THREE.AudioLoader();
+  audioLoader.load("assets/images/ambient2.mp3", function (buffer) {
+    sound.setBuffer(buffer);
+    sound.setLoop(true);
+    sound.setVolume(0.5);
+    sound.play();
+  });
 }
 
 function createGround() {
@@ -282,14 +344,13 @@ function setupPlayer() {
 
 function setupGUI() {
   gui = new GUI();
-  const visFolder = gui.addFolder("Visualization");
+  const visFolder = gui.addFolder("Collision Detection");
   visFolder.add(params, "displayCollider");
   visFolder.add(params, "displayBVH");
   visFolder.add(params, "visualizeDepth", 1, 20, 1).onChange((v) => {
     visualizer.depth = v;
     visualizer.update();
   });
-  // visFolder.open();
 
   const physicsFolder = gui.addFolder("Player");
   // physicsFolder.add(params, "physicsSteps", 0, 30, 1);
@@ -297,10 +358,7 @@ function setupGUI() {
     params.gravity = parseFloat(v);
   });
   physicsFolder.add(params, "playerSpeed", 1, 20);
-  physicsFolder.open();
-
-  gui.add(params, "reset");
-  gui.open();
+  physicsFolder.add(params, "reset");
 }
 
 function setupCallbacks() {
@@ -426,7 +484,8 @@ function loadThing(res) {
         max = map(max, 0, 0.0493, 0, 1);
         val = Math.random();
         // val = map(val, -1, 1, 0, 1);
-        // setCol(cols, i, val, val, val);
+        // setCol(cols, i, max,max,max);
+        // setCol(cols, i, 1,1,1);
         // blue
         if (max <= p.water) setCol(cols, i, 0.0, 0.3, 1.0);
         // blue
@@ -516,6 +575,8 @@ function loadThing(res) {
   scene.add(visualizer);
   scene.add(collider);
   scene.add(environment);
+
+  console.log("env", environment);
 
   new Trees(places, scene, gui);
 }
