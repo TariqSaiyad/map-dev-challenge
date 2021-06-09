@@ -1,17 +1,26 @@
-# Three.js Starter
-Courtesy of Bruno Simon of https://threejs-journey.xyz/
+## Dev Challenge - New Zealand Map 
+### Tariq Saiyad
 
-## Setup
-Download [Node.js](https://nodejs.org/en/download/).
-Run this followed commands:
+Made using [Three.js](https://threejs.org/)
+
+Credits:
+
+- NZ heightmap by [u/suber56](https://www.reddit.com/r/newzealand/comments/1c170r/grayscale_altitude_map_of_nz/)
+- Fox model + animation by [Pixelmannen](https://sketchfab.com/3d-models/low-poly-fox-by-pixelmannen-animated-371dea88d7e04a76af5763f2a36866bc)
+- Ambient music by [The Guild of Ambience](https://www.youtube.com/watch?v=xNN7iTA57jM)
+
+
+### Instructions to run
 
 ``` bash
 # Install dependencies (only the first time)
 npm install
 
-# Run the local server at localhost:8080
-npm run dev
-
-# Build for production in the dist/ directory
+# Build assets using
 npm run build
+
+# Run the local server at localhost:8080
+npm run parcel
 ```
+
+---
