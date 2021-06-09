@@ -22,8 +22,6 @@ THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree
 THREE.Mesh.prototype.raycast = acceleratedRaycast
 
-const info = document.getElementById('info')
-
 const STATE = {
   chill: 'CHILL',
   walk: 'WALK',
