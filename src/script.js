@@ -22,7 +22,7 @@ THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree
 THREE.Mesh.prototype.raycast = acceleratedRaycast
 
-// const info = document.getElementById('info')
+const info = document.getElementById('info')
 
 const STATE = {
   chill: 'CHILL',
@@ -792,5 +792,5 @@ function render () {
 
   // push scene + camera info to the renderer and draw on screen.
   renderer.render(scene, camera)
-  window.renderer = renderer
+  info.innerHTML = `${JSON.stringify(renderer.info)}`
 }
