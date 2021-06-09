@@ -792,5 +792,4 @@ function render () {
 
   // push scene + camera info to the renderer and draw on screen.
   renderer.render(scene, camera)
-  info.innerHTML = `${JSON.stringify(renderer.info.render)}`
 }
