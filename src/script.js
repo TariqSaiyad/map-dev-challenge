@@ -76,7 +76,8 @@ const params = {
   cameraZ: 0
 }
 
-let camera, scene, renderer, gui, controls, stats, clock, pmremGenerator
+var renderer
+let camera, scene, gui, controls, stats, clock, pmremGenerator
 let water, sun, sky, clouds, dirLight, trees
 let environment, collider, visualizer, player
 
