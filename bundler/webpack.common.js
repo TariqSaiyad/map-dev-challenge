@@ -1,58 +1,58 @@
-const CopyWebpackPlugin = require("copy-webpack-plugin");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCSSExtractPlugin = require("mini-css-extract-plugin");
-const path = require("path");
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const MiniCSSExtractPlugin = require('mini-css-extract-plugin')
+const path = require('path')
 
 module.exports = {
-  entry: path.resolve(__dirname, "../src/script.js"),
+  entry: path.resolve(__dirname, '../src/script.js'),
   output: {
-    filename: "[name].js",
-    path: path.resolve(__dirname, "../docs"),
+    filename: '[name].js',
+    path: path.resolve(__dirname, '../docs')
   },
-  devtool: "source-map",
+  devtool: 'source-map',
   plugins: [
     new CopyWebpackPlugin({
-      patterns: [{ from: path.resolve(__dirname, "../static") }],
+      // patterns: [{ from: path.resolve(__dirname, '../static') }],
       patterns: [
         {
-          from: path.resolve(__dirname, "../assets/images"),
-          to: "assets/images",
-        },
-      ],
+          from: path.resolve(__dirname, '../assets/images'),
+          to: 'assets/images'
+        }
+      ]
     }),
     new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, "../src/index.html"),
-      minify: true,
+      template: path.resolve(__dirname, '../src/index.html'),
+      minify: true
     }),
-    new MiniCSSExtractPlugin(),
+    new MiniCSSExtractPlugin()
   ],
   module: {
     rules: [
       // HTML
       {
         test: /\.(html)$/,
-        use: ["html-loader"],
+        use: ['html-loader']
       },
 
       // JS
       {
         test: /\.m?js$/,
         exclude: /node_modules/,
-        loader: "babel-loader",
+        loader: 'babel-loader',
         options: {
           presets: [
-            "@babel/preset-env",
+            '@babel/preset-env',
             {
-              plugins: ["@babel/plugin-proposal-class-properties"],
-            },
-          ],
-        },
+              plugins: ['@babel/plugin-proposal-class-properties']
+            }
+          ]
+        }
       },
 
       // CSS
       {
         test: /\.css$/,
-        use: [MiniCSSExtractPlugin.loader, "css-loader"],
+        use: [MiniCSSExtractPlugin.loader, 'css-loader']
       },
 
       // Images
@@ -60,12 +60,12 @@ module.exports = {
         test: /\.(jpg|png|gif|svg)$/,
         use: [
           {
-            loader: "file-loader",
+            loader: 'file-loader',
             options: {
-              outputPath: "assets/images/",
-            },
-          },
-        ],
+              outputPath: 'assets/images/'
+            }
+          }
+        ]
       },
 
       // Fonts
@@ -73,13 +73,13 @@ module.exports = {
         test: /\.(ttf|eot|woff|woff2)$/,
         use: [
           {
-            loader: "file-loader",
+            loader: 'file-loader',
             options: {
-              outputPath: "assets/fonts/",
-            },
-          },
-        ],
-      },
-    ],
-  },
-};
+              outputPath: 'assets/fonts/'
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
