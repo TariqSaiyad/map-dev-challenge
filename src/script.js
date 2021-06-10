@@ -75,6 +75,7 @@ const params = {
 }
 
 var renderer
+let delta = 0
 let camera, scene, gui, controls, stats, clock, pmremGenerator
 let water, sun, sky, clouds, dirLight, trees
 let environment, collider, visualizer, player
@@ -89,6 +90,7 @@ let fwdPressed = false
 let bkdPressed = false
 let lftPressed = false
 let rgtPressed = false
+let angle = 0
 const playerVelocity = new THREE.Vector3()
 const playerDirection = new THREE.Vector3(0, 1, 0)
 const upVector = new THREE.Vector3(0, 1, 0)
@@ -627,7 +629,7 @@ function updatePlayer (delta) {
   player.position.addScaledVector(playerVelocity, delta)
 
   // move the player
-  const angle = controls.getAzimuthalAngle()
+  angle = controls.getAzimuthalAngle()
   player.quaternion.setFromAxisAngle(playerDirection, angle + Math.PI)
 
   if (fwdPressed) {
@@ -746,7 +748,7 @@ function render () {
   // eslint-disable-next-line no-undef
   requestAnimationFrame(render)
 
-  const delta = Math.min(clock.getDelta(), 0.1)
+  delta = Math.min(clock.getDelta(), 0.1)
 
   // update animation.
   if (mixer) {
@@ -768,11 +770,9 @@ function render () {
   if (collider) {
     collider.visible = params.displayCollider
     visualizer.visible = params.displayBVH
-
-    const physicsSteps = params.physicsSteps
     // update player possibly multiple times each frame.
-    for (let i = 0; i < physicsSteps; i++) {
-      updatePlayer(delta / physicsSteps)
+    for (let i = 0; i < params.physicsSteps; i++) {
+      updatePlayer(delta / params.physicsSteps)
     }
   }
 
