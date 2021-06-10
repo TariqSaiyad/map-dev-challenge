@@ -7,7 +7,7 @@ module.exports = {
   entry: path.resolve(__dirname, '../src/script.js'),
   output: {
     filename: '[name].js',
-    path: path.resolve(__dirname, '../docs')
+    path: path.resolve(__dirname, '../dist')
   },
   devtool: 'source-map',
   plugins: [

@@ -456,7 +456,7 @@ function setupCallbacks () {
  * Terrain rendering starts here.
  */
 function createTerrain () {
-  new GLTFLoader().load('assets/images/terrain-cmprsed.glb', (res) => loadThing(res))
+  new GLTFLoader().load('assets/images/high.glb', (res) => loadThing(res))
 }
 
 /**
