@@ -5,7 +5,7 @@ set -e
 now=$(date +'%d-%m-%Y')
 message="deploy-${now}"
 # echo "${message}"
-npm run build
-git add dist/
+# npm run build
+git add dist/ -f
 git commit -m ${message}
 git subtree push --prefix dist origin gh-pages
