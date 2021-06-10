@@ -1,3 +1,4 @@
+[![Build and Deploy](https://github.com/TariqSaiyad/map-dev-challenge/actions/workflows/main.yml/badge.svg)](https://github.com/TariqSaiyad/map-dev-challenge/actions/workflows/main.yml)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 
 ## Dev Challenge - New Zealand Map 
