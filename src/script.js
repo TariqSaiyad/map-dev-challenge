@@ -74,7 +74,7 @@ const params = {
   cameraZ: 0
 }
 
-var renderer
+let renderer
 let delta = 0
 let camera, scene, gui, controls, stats, clock, pmremGenerator
 let water, sun, sky, clouds, dirLight, trees
@@ -609,7 +609,7 @@ function colorTerrain (o, toMerge) {
  */
 function reset () {
   playerVelocity.set(0, 0, 0)
-  player.position.set(15.75, -3, 30)
+  player.position.set(195, 25, 70)
   camera.position.sub(controls.target)
   controls.target.copy(player.position)
   camera.position.add(player.position)
